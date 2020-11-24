@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WAFRA4OD
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.1.1
 // @description  WAFRA for Open Data (WAFRA4OD)
 // @author       Cesar Gonzalez Mora
 // @match        *://www.europeandataportal.eu/*
@@ -120,6 +120,11 @@ $(document).ready(function() {
     link.rel = 'stylesheet';
     link.href = 'https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css';
     document.head.appendChild(link);
+    //<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    /*var meta = document.createElement('meta');
+    meta.httpEquiv = "Content-Security-Policy";
+    meta.content = "upgrade-insecure-requests";
+    document.head.appendChild(meta);*/
     $('*[class=""]').removeAttr('class');
 
     /*var meta = document.createElement('meta');
@@ -4376,8 +4381,27 @@ function getDistributions(){
         if(distributionItems[i].firstElementChild.firstElementChild.firstElementChild.getAttribute("type") === "CSV"){
             console.log(distributionItems[i].firstElementChild.lastElementChild.firstElementChild.firstElementChild.firstElementChild.textContent);
             console.log(distributionItems[i].firstElementChild.lastElementChild.firstElementChild.lastElementChild.lastElementChild.lastElementChild.firstElementChild.firstElementChild.href);
+            readCSVFromDistribution(distributionItems[i].firstElementChild.lastElementChild.firstElementChild.lastElementChild.lastElementChild.lastElementChild.firstElementChild.firstElementChild.href);
         }
     }
+}
+
+function readCSVFromDistribution(distributionURL){
+    console.log("readCSVFromDistribution: " + distributionURL);
+    var xhr = new XMLHttpRequest();
+    // Using https://cors-anywhere.herokuapp.com/ allows us to download http (insecure) datasets from https pages
+    xhr.open("GET", "https://cors-anywhere.herokuapp.com/" + distributionURL, true);
+    //xhr.setRequestHeader("Origin", '*');
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.onreadystatechange = function() {
+          console.log(JSON.stringify(xhr));
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200) {
+          console.log(xhr.responseText);
+        }
+      }
+    }
+    xhr.send();
 }
 
 /*(function() {
