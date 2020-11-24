@@ -1,12 +1,10 @@
 // ==UserScript==
-// @name         WAFRA
-// @updateURL    https://raw.githubusercontent.com/cgmora12/Web-Augmentation-Framework-for-Accessibility/master/WAFRA.js
-// @downloadURL  https://raw.githubusercontent.com/cgmora12/Web-Augmentation-Framework-for-Accessibility/master/WAFRA.js
+// @name         WAFRA4OD
 // @namespace    http://tampermonkey.net/
-// @version      2.3
-// @description  Web Augmentation Framework for Accessibility (WAFRA)
+// @version      0.1
+// @description  WAFRA for Open Data (WAFRA4OD)
 // @author       Cesar Gonzalez Mora
-// @match        *://*/*
+// @match        *://www.europeandataportal.eu/*
 // @noframes
 // @exclude      *://www.youtube.com/embed/*
 // @grant        none
@@ -151,8 +149,9 @@ $(document).ready(function() {
     localStoragePrefix = encodeURI(document.URL) + "_";
 
     // Detect if domain is spanish or english
-    if(document.domain.endsWith(".es") || document.domain.startsWith("es.")){
+    if(document.URL.endsWith("/es") || document.URL.includes("locale=es")){
         spanishDomain = true;
+        console.log("spanish domain");
     }
 
 
@@ -207,6 +206,10 @@ $(document).ready(function() {
 
     setTimeout(function(){
         toggleHiddenSections();
+    }, 1000);
+
+    setTimeout(function(){
+        getDistributions();
     }, 1000);
 
 
@@ -4365,6 +4368,17 @@ function getElementByXPath(path) {
         .singleNodeValue;
 }
 
+function getDistributions(){
+    console.log("getDistributions");
+    var distributionItems = document.getElementsByClassName("distributions__item");
+
+    for(var i = 0; i < distributionItems.length; i++){
+        if(distributionItems[i].firstElementChild.firstElementChild.firstElementChild.getAttribute("type") === "CSV"){
+            console.log(distributionItems[i].firstElementChild.lastElementChild.firstElementChild.firstElementChild.firstElementChild.textContent);
+            console.log(distributionItems[i].firstElementChild.lastElementChild.firstElementChild.lastElementChild.lastElementChild.lastElementChild.firstElementChild.firstElementChild.href);
+        }
+    }
+}
 
 /*(function() {
     'use strict';
