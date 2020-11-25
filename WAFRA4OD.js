@@ -355,7 +355,7 @@ function readAloud(params){
 
     var readContent = "";
 
-    //TODO
+    //TODO: check array of params and read specific content
     switch(params){
         case "columns":
             readContent += "columns";
@@ -421,7 +421,7 @@ function goTo(params){
     closeMenu();
     closeOperationsMenu();
 
-    //TODO
+    //TODO: for goToParams and go to specific content
     switch(params){
         case "distributions":
             params = "/html/body/div/div/div[2]/div/div[2]/div[3]/div/div/h3";
@@ -680,7 +680,7 @@ function createOperationsMenu(){
             } else {
                 a.style.setProperty("pointer-events", "none");
             }
-            //TODO: Refactor for reusability
+
             input.addEventListener("change", function(){
                 for(var operationsI = 0; operationsI < operations.length; operationsI++){
                     if(operations[operationsI].id === this.id.split("Input").join("")){
@@ -713,7 +713,7 @@ function createOperationsMenu(){
     //readWelcome();
     setTimeout(function() { say(); }, 1000);
 
-    //TODO: refactor Toggle some operations
+
     toggleReadAloud();
     toggleBreadcrumb();
 }
@@ -1403,7 +1403,7 @@ function updateGrammar(){
         commandsGrammar = [ 'increase', 'magnify', 'read', 'play', 'font', 'size', 'decrease', 'reduce', 'stop', 'listening', 'faster', 'slower' ];
         commandsAux = [];
         for(var i = 0; i < operations.length; i++){
-            //TODO: add operation + annotations names to grammar
+            //TODO: add operation + params names to grammar
             /*if(operations[i].voiceCommand === "read" || operations[i].voiceCommand === "go to"){
             for(var j = 0; j < sectionsNames.length; j++){
                 commandsAux.push(operations[i] + " " + sectionsNames[j].toLowerCase())
@@ -1418,7 +1418,7 @@ function updateGrammar(){
         commandsGrammar = [ 'aumentar', 'incrementar', 'leer', 'play', 'letra', 'tamaño', 'decrementar', 'reducir', 'detener', 'activar', 'desactivar', 'más', 'rápido', 'despacio' ];
         commandsAux = [];
         for(var j = 0; j < operations.length; j++){
-            //TODO: add operation + annotations names to grammar
+            //TODO: add operation + params names to grammar
             /*if(operations[i].voiceCommand === "read" || operations[i].voiceCommand === "go to"){
             for(var j = 0; j < sectionsNames.length; j++){
                 commandsAux.push(operations[i] + " " + sectionsNames[j].toLowerCase())
