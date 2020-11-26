@@ -49,6 +49,7 @@ var activateCommand = "activate";
 var deactivateCommand = "deactivate";
 var changeCommandQuestion = "which command";
 var newCommandQuestion = "which is the new command";
+var chooseDistributionCommand = "choose distribution";
 
 var listOperationsCommandES = "listar operaciones";
 
@@ -65,12 +66,14 @@ var activateCommandES = "activar";
 var deactivateCommandES = "desactivar";
 var changeCommandQuestionES = "que comando";
 var newCommandQuestionES = "cuál es el nuevo comando?";
+var chooseDistributionCommandES = "elegir distribución";
 
 var changeCommandInProcess1 = false;
 var changeCommandInProcess2 = false;
 var newCommandString = "";
 
 var operationToChange;
+var distributionChoosenURL = "";
 
 var readParams = ["description", "distributions", "columns", "first row"];
 var readParamsES = ["descripción", "distribuciones", "columnas", "primera fila"];
@@ -141,9 +144,10 @@ $(document).ready(function() {
     wafra.createCommandsMenu();
     document.onkeydown = KeyPress;
 
-    setTimeout(function(){
+    //TODO: personalise welcome
+    /*setTimeout(function(){
         getDistributions();
-    }, 1000);
+    }, 1000);*/
 
 
 });
@@ -348,6 +352,8 @@ class ReadAloudOperation extends Operation {
 
 function readAloud(params){
 
+    //TODO: control params (i.e. separate "columns" from distribution name)
+
     console.log("read: " + params);
     //closeGoToMenu();
     closeMenu();
@@ -357,11 +363,15 @@ function readAloud(params){
 
     //TODO: check array of params and read specific content
     switch(params){
-        case "columns":
-            readContent += "columns";
+        case "description" || "descripción":
+            readContent += getDescriptionText();
             break;
-        case "columnas":
-            readContent += "columnas";
+        case "columns" || "columnas":
+            getColumnsText(params);
+            return;
+            break;
+        case "distributions" || "distribuciones":
+            readContent += getDistributionsText();
             break;
     }
 
@@ -415,7 +425,7 @@ class GoToOperation extends Operation {
 
 // Go to
 function goTo(params){
-   
+
     console.log("goTo: " + params);
     //closeGoToMenu();
     closeMenu();
@@ -865,7 +875,7 @@ function readWelcome(){
         for(var i = 0; i < operations.length; i++){
             readContent += operations[i].voiceCommand + ", ";
         }
-        readContent += listOperationsCommand + ", " + welcomeCommand + ", " + stopListeningCommand + ", " + changeCommand + ", "
+        readContent += listOperationsCommand + ", " + welcomeCommand + ", " + stopListeningCommand + ", " + chooseDistributionCommand + ", " + changeCommand + ", "
             + activateCommand + ", " + deactivateCommand + ", " + readFasterCommand + ", " + readSlowerCommand + ". ";
         readContent += "The sections to read aloud are: " + readParams.toString() + ". And the sections to go directly are: " + goToParams.toString() + ".";
     } else {
@@ -873,7 +883,7 @@ function readWelcome(){
         for(var j = 0; j < operations.length; j++){
             readContent += operations[j].voiceCommand + ", ";
         }
-        readContent += listOperationsCommandES + ", " + welcomeCommandES + ", " + stopListeningCommandES + ", " + changeCommandES + ", "
+        readContent += listOperationsCommandES + ", " + welcomeCommandES + ", " + stopListeningCommandES + ", " + chooseDistributionCommandES + ", " + changeCommandES + ", "
             + activateCommandES + ", " + deactivateCommandES + ", " + readFasterCommandES + ", " + readSlowerCommandES + ". ";
         readContent += "Las secciones para leer en voz alta son: " + readParamsES.toString() + ". Y las secciones para ir directamente son: " + goToParamsES.toString() + ".";
     }
@@ -888,7 +898,7 @@ function readOperations(){
         for(var i = 0; i < operations.length; i++){
             readContent += operations[i].voiceCommand + ", ";
         }
-        readContent += listOperationsCommand + ", " + welcomeCommand + ", " + stopListeningCommand + ", " + changeCommand + ", "
+        readContent += listOperationsCommand + ", " + welcomeCommand + ", " + stopListeningCommand + ", " + chooseDistributionCommand + ", " + changeCommand + ", "
             + activateCommand + ", " + deactivateCommand + ", " + readFasterCommand + ", " + readSlowerCommand + ". ";
         readContent += "The sections to read aloud are: " + readParams.toString() + ". And the sections to go directly are: " + goToParams.toString() + ".";
     } else {
@@ -896,12 +906,13 @@ function readOperations(){
         for(var j = 0; j < operations.length; j++){
             readContent += operations[j].voiceCommand + ", ";
         }
-        readContent += listOperationsCommandES + ", " + welcomeCommandES + ", " + stopListeningCommandES + ", " + changeCommandES + ", "
+        readContent += listOperationsCommandES + ", " + welcomeCommandES + ", " + stopListeningCommandES + ", " + chooseDistributionCommandES + ", " + changeCommandES + ", "
             + activateCommandES + ", " + deactivateCommandES + ", " + readFasterCommandES + ", " + readSlowerCommandES + ". ";
         readContent += "Las secciones para leer en voz alta son: " + readParamsES.toString() + ". Y las secciones para ir directamente son: " + goToParamsES.toString() + ".";
     }
     Read(readContent);
 }
+
 function textToAudio(){
     createPlayButtons();
 
@@ -974,7 +985,7 @@ function resumeInfinity() {
 }
 
 function Read(message){
-    //console.log("Read function: " + message)
+    console.log("Read function: " + message)
     window.speechSynthesis.cancel();
     clearTimeout(timeoutResumeInfinity);
 
@@ -1086,6 +1097,9 @@ function KeyPress(e) {
         readSectionsText();
     }*/
     if(evtobj.keyCode == 32 && evtobj.ctrlKey && evtobj.shiftKey){
+        //TODO: quitar pruebas
+        /*distributionChoosenURL="http://www.bne.es/media/datosgob/awe/evento/coronavirus-utf8.csv";
+        getColumnsText();*/
         if(!reading){
             readWelcome();
         }
@@ -1173,6 +1187,9 @@ function audioToText(){
                 else if(speechToText.includes(readSlowerCommand) || speechToText.includes(readSlowerCommandES)){
                     readSlower();
                 }
+                else if(speechToText.includes(chooseDistributionCommand) || speechToText.includes(chooseDistributionCommandES)){
+                    chooseDistribution(speechToText.replaceAll(chooseDistributionCommand, "").replaceAll(chooseDistributionCommandES, ""));
+                }
                 else if((speechToText.includes(activateCommand) && !speechToText.includes(deactivateCommand)) ||
                        (speechToText.includes(activateCommandES) && !speechToText.includes(deactivateCommandES))){
                     console.log("Activate operation: ");
@@ -1244,7 +1261,7 @@ function audioToText(){
                                         var params = {};
                                         var current = {};
                                         params.currentTarget = current;
-                                        params.currentTarget.params = cleanSpeechText.replaceAll(operations[i].voiceCommand);
+                                        params.currentTarget.params = cleanSpeechText.replaceAll(operations[i].voiceCommand, "");
                                         params.currentTarget.operation = operations[i];
                                         operations[i].startOperation(params);
                                         return;
@@ -1616,6 +1633,56 @@ function getElementByXPath(path) {
         .singleNodeValue;
 }
 
+/*function parseCSVLine(text) {
+  return text.match( /\s*(\".*?\"|'.*?'|[^,]+)\s*(,|$)/g ).map( function (text) {
+    let m;
+    if (m = text.match(/^\s*\"(.*?)\"\s*,?$/)) return m[1]; // Double Quoted Text
+    if (m = text.match(/^\s*'(.*?)'\s*,?$/)) return m[1]; // Single Quoted Text
+    if (m = text.match(/^\s*(true|false)\s*,?$/)) return m[1] === "true"; // Boolean
+    if (m = text.match(/^\s*((?:\+|\-)?\d+)\s*,?$/)) return parseInt(m[1]); // Integer Number
+    if (m = text.match(/^\s*((?:\+|\-)?\d*\.\d*)\s*,?$/)) return parseFloat(m[1]); // Floating Number
+    if (m = text.match(/^\s*(.*?)\s*,?$/)) return m[1]; // Unquoted Text
+    return text;
+  } );
+}*/
+
+
+function getDescriptionText(){
+    var text = "";
+    var descriptionElement = getElementByXPath("/html/body/div/div/div[2]/div/div[2]/div[1]/div/div/p");
+    text = descriptionElement.textContent;
+    return text;
+}
+
+function getDistributionsText(){
+    console.log("getDistributionsText");
+    var distributionItems = document.getElementsByClassName("distributions__item");
+
+    var text = "";
+
+    if(!spanishDomain){
+        text+="The distributions available are: ";
+    } else {
+        text+="Las distribuciones disponibles son: ";
+    }
+
+    var format = "";
+    for(var i = 0; i < distributionItems.length; i++){
+        format = distributionItems[i].firstElementChild.firstElementChild.firstElementChild.getAttribute("type");
+        if(format === "CSV"){
+            var distributionNumber = i+1;
+            text+= distributionNumber + ", " + distributionItems[i].firstElementChild.lastElementChild.firstElementChild.firstElementChild.firstElementChild.textContent;
+            if(!spanishDomain){
+                text+=" in " + format + " format; ";
+            } else {
+                text+=" en formato " + format + "; ";
+            }
+        }
+    }
+
+    return text;
+}
+
 function getDistributions(){
     console.log("getDistributions");
     var distributionItems = document.getElementsByClassName("distributions__item");
@@ -1627,6 +1694,108 @@ function getDistributions(){
             readCSVFromDistribution(distributionItems[i].firstElementChild.lastElementChild.firstElementChild.lastElementChild.lastElementChild.lastElementChild.firstElementChild.firstElementChild.href);
         }
     }
+}
+
+function chooseDistribution(number){
+    console.log("chooseDistribution: " + number);
+
+    if(number !== "" && number >= 1){
+        distributionChoosenURL = document.getElementsByClassName("distributions__item")[number-1].firstElementChild.lastElementChild.firstElementChild.lastElementChild.lastElementChild.lastElementChild.firstElementChild.firstElementChild.href;
+    }
+
+}
+
+function getColumnsText(){
+
+    console.log("getColumnsText: " + distributionChoosenURL);
+    if(distributionChoosenURL !== ""){
+        /*var xhr = new XMLHttpRequest();
+        // Using https://cors-anywhere.herokuapp.com/ allows us to download http (insecure) datasets from https pages
+        xhr.open("GET", "https://cors-anywhere.herokuapp.com/" + distributionChoosenURL, true);
+        //xhr.setRequestHeader("Origin", '*');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.onreadystatechange = function() {
+            //console.log(JSON.stringify(xhr));
+            //TODO return or read columns
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    //console.log(xhr.responseText);
+
+                    var columns = "";
+                    //var firstRow = parseCSVLine(xhr.responseText.split("\n")[0]);
+                    var firstRow = xhr.responseText.split("\n")[0];
+                    console.log(firstRow);
+                    var options={"separator" : ";", "delimiter" : ""};
+                    //var firstRowArray = $.csv.toArray(firstRow, options);
+                    if(firstRow.length > 0){
+                        if(!spanishDomain){
+                            columns = "The columns available are: ";
+                        } else {
+                            columns = "Las columnas disponibles son: ";
+                        }
+
+                        for(var i = 0; i < firstRow.length; i++){
+                            columns += firstRow[i].replaceAll(",","").replaceAll(";","") + ", ";
+                        }
+                    } else {
+                        if(!spanishDomain){
+                            columns = "There cannot be found any columns.";
+                        } else {
+                            columns = "No se ha podido encontrar ninguna columna.";
+                        }
+                    }
+                    console.log(columns);
+                    Read(columns);
+                }
+            }
+        }
+        xhr.send();*/
+
+        var firstRow = true;
+        var columns = "";
+        Papa.parse("https://cors-anywhere.herokuapp.com/" + distributionChoosenURL, {
+            //worker: true,
+            download: true,
+            step: function(row, parser) {
+                console.log("Row:", row.data);
+                if(firstRow){
+                    firstRow = false;
+                    if(row.data.length > 0){
+                        if(!spanishDomain){
+                            columns = "The columns available are: ";
+                        } else {
+                            columns = "Las columnas disponibles son: ";
+                        }
+
+                        for(var i = 0; i < row.data.length; i++){
+                            columns += row.data[i].replaceAll(",","").replaceAll(";","") + ", ";
+                        }
+                    } else {
+                        if(!spanishDomain){
+                            columns = "There cannot be found any columns.";
+                        } else {
+                            columns = "No se ha podido encontrar ninguna columna.";
+                        }
+                    }
+                    console.log(columns);
+                    Read(columns);
+                    parser.abort();
+                }
+            },
+            complete: function() {
+                console.log("All done!");
+            }
+        });
+    }
+    else
+    {
+        if(!spanishDomain){
+            Read("First choose a distribution using the voice command: Choose distribution 1 (or the desired number).");
+        } else {
+            Read("Primero elegir la distribución usando el comando de voz: Elegir distribución 1 (o el número deseado).");
+        }
+    }
+
 }
 
 function readCSVFromDistribution(distributionURL){
