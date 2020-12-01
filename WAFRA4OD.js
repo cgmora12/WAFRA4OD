@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WAFRA4OD
 // @namespace    http://tampermonkey.net/
-// @version      0.1.1
+// @version      0.1.2
 // @description  WAFRA for Open Data (WAFRA4OD)
 // @author       Cesar Gonzalez Mora
 // @match        *://www.europeandataportal.eu/*
@@ -20,6 +20,12 @@ const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecogni
 const SpeechGrammarList = window.SpeechGrammarList || window.webkitSpeechGrammarList;
 const recognition = new SpeechRecognition();
 var timeoutResumeInfinity;
+
+var datasetPage = false;
+var apiResult;
+var distributionData = [];
+var numberOfRowsToAutoDownload = 100;
+var distributionDownloaded = false;
 
 //var listeningActive = true;
 
@@ -50,6 +56,7 @@ var deactivateCommand = "deactivate";
 var changeCommandQuestion = "which command";
 var newCommandQuestion = "which is the new command";
 var chooseDistributionCommand = "choose distribution";
+var downloadDistributionCommand = "download";
 
 var listOperationsCommandES = "listar operaciones";
 
@@ -67,16 +74,17 @@ var deactivateCommandES = "desactivar";
 var changeCommandQuestionES = "que comando";
 var newCommandQuestionES = "cuál es el nuevo comando?";
 var chooseDistributionCommandES = "elegir distribución";
+var downloadDistributionCommandES = "descargar";
 
 var changeCommandInProcess1 = false;
 var changeCommandInProcess2 = false;
 var newCommandString = "";
 
 var operationToChange;
-var distributionChoosenURL = "";
+var distributionChoosenURL = "", distributionChoosenTitle = "";
 
-var readParams = ["description", "distributions", "columns", "first row"];
-var readParamsES = ["descripción", "distribuciones", "columnas", "primera fila"];
+var readParams = ["title", "description", "distributions", "columns", "first row"];
+var readParamsES = ["titulo", "descripcion", "distribuciones", "columnas", "primera fila"];
 var goToParams = ["distributions", "description"];
 var goToParamsES = ["distribuciones", "descripción"];
 
@@ -112,6 +120,12 @@ $(document).ready(function() {
     if(document.URL.endsWith("/es") || document.URL.includes("locale=es")){
         spanishDomain = true;
         console.log("spanish domain");
+    }
+
+    if(document.URL.startsWith("https://www.europeandataportal.eu/data/datasets/")){
+        datasetPage = true;
+        var apiURL = document.URL.replace("https://www.europeandataportal.eu/data/datasets/", "https://www.europeandataportal.eu/data/search/datasets/");
+        queryAPI(apiURL);
     }
 
     /*********************** Add new operations here ************************/
@@ -352,8 +366,6 @@ class ReadAloudOperation extends Operation {
 
 function readAloud(params){
 
-    //TODO: control params (i.e. separate "columns" from distribution name)
-
     console.log("read: " + params);
     //closeGoToMenu();
     closeMenu();
@@ -361,17 +373,28 @@ function readAloud(params){
 
     var readContent = "";
 
-    //TODO: check array of params and read specific content
+    //TODO: add all commands
     switch(params){
-        case "description" || "descripción":
-            readContent += getDescriptionText();
+        case "title":
+        case "titulo":
+            getTitleText();
             break;
-        case "columns" || "columnas":
-            getColumnsText(params);
+        case "description":
+        case "descripcion":
+            getDescriptionText();
+            break;
+        case "columns":
+        case "columnas":
+            getColumnsText();
             return;
             break;
-        case "distributions" || "distribuciones":
-            readContent += getDistributionsText();
+        case "distributions":
+        case "distribuciones":
+            getDistributionsText();
+            break;
+        case "download":
+        case "descargar":
+            downloadDistribution();
             break;
     }
 
@@ -395,7 +418,7 @@ function readAloud(params){
         console.log("domParser: " + JSON.stringify(domParser));
         console.log("content: " + readContent);
     }*/
-    Read(readContent);
+    //Read(readContent);
 }
 
 class GoToOperation extends Operation {
@@ -867,7 +890,6 @@ function closeSubmenu(menuId){
     }
 }
 
-
 function readWelcome(){
     var readContent = "";
     if(!spanishDomain){
@@ -1098,8 +1120,7 @@ function KeyPress(e) {
     }*/
     if(evtobj.keyCode == 32 && evtobj.ctrlKey && evtobj.shiftKey){
         //TODO: quitar pruebas
-        /*distributionChoosenURL="http://www.bne.es/media/datosgob/awe/evento/coronavirus-utf8.csv";
-        getColumnsText();*/
+        /*readAloud("columnas");*/
         if(!reading){
             readWelcome();
         }
@@ -1188,7 +1209,10 @@ function audioToText(){
                     readSlower();
                 }
                 else if(speechToText.includes(chooseDistributionCommand) || speechToText.includes(chooseDistributionCommandES)){
-                    chooseDistribution(speechToText.replaceAll(chooseDistributionCommand, "").replaceAll(chooseDistributionCommandES, ""));
+                    chooseDistribution(speechToText.replaceAll(chooseDistributionCommand, "").replaceAll(chooseDistributionCommandES, "").trim());
+                }
+                else if(speechToText.includes(downloadDistributionCommand) || speechToText.includes(downloadDistributionCommandES)){
+                    downloadDistribution();
                 }
                 else if((speechToText.includes(activateCommand) && !speechToText.includes(deactivateCommand)) ||
                        (speechToText.includes(activateCommandES) && !speechToText.includes(deactivateCommandES))){
@@ -1261,7 +1285,7 @@ function audioToText(){
                                         var params = {};
                                         var current = {};
                                         params.currentTarget = current;
-                                        params.currentTarget.params = cleanSpeechText.replaceAll(operations[i].voiceCommand, "");
+                                        params.currentTarget.params = cleanSpeechText.replaceAll(operations[i].voiceCommand, "").trim();
                                         params.currentTarget.operation = operations[i];
                                         operations[i].startOperation(params);
                                         return;
@@ -1429,8 +1453,14 @@ function updateGrammar(){
             commandsAux.push(operations[i].voiceCommand)
             //}
         }
-        commandsAux.push(readParams);
-        commandsAux.push(goToParams);
+
+        for(var i2 = 0; i2 < readParams.length; i2++){
+            commandsAux.push(readParams[i2]);
+        }
+
+        for(var i3 = 0; i3 < goToParams.length; i3++){
+            commandsAux.push(goToParams[i3]);
+        }
     } else {
         commandsGrammar = [ 'aumentar', 'incrementar', 'leer', 'play', 'letra', 'tamaño', 'decrementar', 'reducir', 'detener', 'activar', 'desactivar', 'más', 'rápido', 'despacio' ];
         commandsAux = [];
@@ -1444,8 +1474,14 @@ function updateGrammar(){
             commandsAux.push(operations[j].voiceCommand)
             //}
         }
-        commandsAux.push(readParamsES);
-        commandsAux.push(goToParamsES);
+
+        for(var j2 = 0; j2 < readParams.length; j2++){
+            commandsAux.push(readParams[j2]);
+        }
+
+        for(var j3 = 0; j3 < goToParams.length; j3++){
+            commandsAux.push(goToParams[j3]);
+        }
     }
 
     grammar = '#JSGF V1.0; grammar commands; public <command> = ' + commandsGrammar.concat(commandsAux).join(' | ') + ' ;';
@@ -1646,70 +1682,221 @@ function getElementByXPath(path) {
   } );
 }*/
 
+function queryAPI(apiURL){
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", apiURL, true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                console.log("api queried: " + apiURL);
+                //console.log(xhr.responseText);
+                apiResult = JSON.parse(xhr.responseText).result;
+                console.log(apiResult);
+
+                if(distributionChoosenURL === ""){
+                    // choose distribution csv by order (last)
+                    var csvDistribution, csvDistributionAux;
+                    for(var i = 0; i < apiResult.distributions.length; i++){
+                        if(apiResult.distributions[i].format != null && apiResult.distributions[i].format.id === "CSV"){
+                            csvDistribution = apiResult.distributions[i];
+                            distributionChoosenURL = csvDistribution.access_url;
+                            if(!spanishDomain){
+                                distributionChoosenTitle = csvDistribution.title.en;
+                            } else {
+                                distributionChoosenTitle = csvDistribution.title.es;
+                            }
+                        }
+                    }
+                    downloadDistributionToInteract();
+                }
+            }
+        }
+    }
+    xhr.send();
+}
+
+function getTitleText(){
+    console.log("getTitleText");
+    var text = "";
+    if(!spanishDomain){
+        text = "Title: " + apiResult.title.en;
+    } else {
+        text = "Título: " + apiResult.title.es;
+    }
+    Read(text);
+}
 
 function getDescriptionText(){
+    console.log("getDescriptionText");
     var text = "";
-    var descriptionElement = getElementByXPath("/html/body/div/div/div[2]/div/div[2]/div[1]/div/div/p");
-    text = descriptionElement.textContent;
-    return text;
+    //var descriptionElement = getElementByXPath("/html/body/div/div/div[2]/div/div[2]/div[1]/div/div/p");
+    //text = descriptionElement.textContent;
+    if(!spanishDomain){
+        text = "Description: " + apiResult.description.en;
+    } else {
+        text = "Descripción: " + apiResult.description.es;
+    }
+    Read(text);
+}
+
+function downloadDistribution(){
+    console.log("downloadDistribution");
+    var link = document.createElement("a");
+    console.log("distributionChoosenTitle: " + distributionChoosenTitle);
+    link.download = distributionChoosenTitle;
+    console.log("distributionChoosenURL: " + distributionChoosenURL);
+    link.href = distributionChoosenURL;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    delete link;
+
+    if(!spanishDomain){
+        Read("Distribution downloaded to your computer.");
+    } else {
+        Read("Distribución descargada a su ordenador.");
+    }
 }
 
 function getDistributionsText(){
+    //TODO: get text from api
     console.log("getDistributionsText");
-    var distributionItems = document.getElementsByClassName("distributions__item");
+    //var distributionItems = document.getElementsByClassName("distributions__item");
 
     var text = "";
 
     if(!spanishDomain){
-        text+="The distributions available are: ";
+        text += "The distributions available are: ";
     } else {
-        text+="Las distribuciones disponibles son: ";
+        text += "Las distribuciones disponibles son: ";
     }
 
     var format = "";
-    for(var i = 0; i < distributionItems.length; i++){
-        format = distributionItems[i].firstElementChild.firstElementChild.firstElementChild.getAttribute("type");
-        if(format === "CSV"){
-            var distributionNumber = i+1;
-            text+= distributionNumber + ", " + distributionItems[i].firstElementChild.lastElementChild.firstElementChild.firstElementChild.firstElementChild.textContent;
-            if(!spanishDomain){
-                text+=" in " + format + " format; ";
-            } else {
-                text+=" en formato " + format + "; ";
-            }
+    for(var i = 0; i < apiResult.distributions.length; i++){
+        //format = distributionItems[i].firstElementChild.firstElementChild.firstElementChild.getAttribute("type");
+        //if(format === "CSV"){
+        var distributionNumber = i+1;
+        var distributionTitle = "";
+        if(!spanishDomain){
+            distributionTitle = apiResult.distributions[i].title.en;
+        } else {
+            distributionTitle = apiResult.distributions[i].title.es;
         }
+
+        text += distributionNumber + ", " + distributionTitle;
+
+        if(!spanishDomain){
+            text += " in " + format + " format; ";
+        } else {
+            text += " en formato " + format + "; ";
+        }
+        //}
     }
 
-    return text;
-}
-
-function getDistributions(){
-    console.log("getDistributions");
-    var distributionItems = document.getElementsByClassName("distributions__item");
-
-    for(var i = 0; i < distributionItems.length; i++){
-        if(distributionItems[i].firstElementChild.firstElementChild.firstElementChild.getAttribute("type") === "CSV"){
-            console.log(distributionItems[i].firstElementChild.lastElementChild.firstElementChild.firstElementChild.firstElementChild.textContent);
-            console.log(distributionItems[i].firstElementChild.lastElementChild.firstElementChild.lastElementChild.lastElementChild.lastElementChild.firstElementChild.firstElementChild.href);
-            readCSVFromDistribution(distributionItems[i].firstElementChild.lastElementChild.firstElementChild.lastElementChild.lastElementChild.lastElementChild.firstElementChild.firstElementChild.href);
-        }
-    }
+    Read(text);
 }
 
 function chooseDistribution(number){
     console.log("chooseDistribution: " + number);
 
     if(number !== "" && number >= 1){
-        distributionChoosenURL = document.getElementsByClassName("distributions__item")[number-1].firstElementChild.lastElementChild.firstElementChild.lastElementChild.lastElementChild.lastElementChild.firstElementChild.firstElementChild.href;
+        for(var i = 0; i < apiResult.distributions.length; i++){
+            var index = i - 1;
+            if(apiResult.distributions[i].format.id.toLower() === "csv" && index === number){
+                var csvDistribution = apiResult.distributions[i];
+                distributionChoosenURL = csvDistribution.access_url;
+                if(!spanishDomain){
+                    distributionChoosenTitle = csvDistribution.title.en;
+                }
+                else{
+                    distributionChoosenTitle = csvDistribution.title.es;
+                }
+            }
+        }
+        //distributionChoosenURL = document.getElementsByClassName("distributions__item")[number-1].firstElementChild.lastElementChild.firstElementChild.lastElementChild.lastElementChild.lastElementChild.firstElementChild.firstElementChild.href;
+    }
+
+    if(!spanishDomain){
+        Read("Distribution " + number + " choosen. Now you can ask for data of that distribution.");
+    } else {
+        Read("Distribución " + number + " elegida. Ahora puedes preguntar por los datos de dicha distribución.");
     }
 
 }
 
 function getColumnsText(){
 
+    var firstRow = true;
     console.log("getColumnsText: " + distributionChoosenURL);
+
     if(distributionChoosenURL !== ""){
-        /*var xhr = new XMLHttpRequest();
+
+        if(!distributionDownloaded){
+            downloadDistributionToInteract();
+            if(!spanishDomain){
+                Read("Accessing data, please try again in a while...");
+            } else {
+                Read("Accediendo a los datos, por favor pruebe de nuevo en unos instantes...");
+            }
+        } else {
+            var columns = "";
+            if(distributionData[0].length > 0){
+                if(!spanishDomain){
+                    columns = "The columns available are: ";
+                } else {
+                    columns = "Las columnas disponibles son: ";
+                }
+
+                for(var i = 0; i < distributionData[0].length; i++){
+                    columns += distributionData[0][i].replaceAll(",","").replaceAll(";","") + ", ";
+                }
+            } else {
+                if(!spanishDomain){
+                    columns = "There cannot be found any columns.";
+                } else {
+                    columns = "No se ha podido encontrar ninguna columna.";
+                }
+            }
+            console.log(columns);
+            Read(columns);
+        }
+    }
+    else
+    {
+        if(!spanishDomain){
+            Read("First choose a distribution using the voice command: Choose distribution 1 (or the desired number).");
+        } else {
+            Read("Primero elegir la distribución usando el comando de voz: Elegir distribución 1 (o el número deseado).");
+        }
+    }
+
+}
+
+//TODO: get rows functions
+
+
+function downloadDistributionToInteract(){
+    var columns = "";
+    var counter = 0;
+    //TODO: create own https server that redirects to dataset
+    Papa.parse("https://cors-anywhere.herokuapp.com/" + distributionChoosenURL, {
+        //worker: true,
+        download: true,
+        step: function(row, parser) {
+            distributionData.push(row.data);
+            counter++;
+            if(counter >= numberOfRowsToAutoDownload){
+                parser.abort();
+            }
+        },
+        complete: function() {
+            console.log("All done!");
+            distributionDownloaded = true;
+        }
+    });
+
+    /*var xhr = new XMLHttpRequest();
         // Using https://cors-anywhere.herokuapp.com/ allows us to download http (insecure) datasets from https pages
         xhr.open("GET", "https://cors-anywhere.herokuapp.com/" + distributionChoosenURL, true);
         //xhr.setRequestHeader("Origin", '*');
@@ -1750,70 +1937,6 @@ function getColumnsText(){
             }
         }
         xhr.send();*/
-
-        var firstRow = true;
-        var columns = "";
-        Papa.parse("https://cors-anywhere.herokuapp.com/" + distributionChoosenURL, {
-            //worker: true,
-            download: true,
-            step: function(row, parser) {
-                console.log("Row:", row.data);
-                if(firstRow){
-                    firstRow = false;
-                    if(row.data.length > 0){
-                        if(!spanishDomain){
-                            columns = "The columns available are: ";
-                        } else {
-                            columns = "Las columnas disponibles son: ";
-                        }
-
-                        for(var i = 0; i < row.data.length; i++){
-                            columns += row.data[i].replaceAll(",","").replaceAll(";","") + ", ";
-                        }
-                    } else {
-                        if(!spanishDomain){
-                            columns = "There cannot be found any columns.";
-                        } else {
-                            columns = "No se ha podido encontrar ninguna columna.";
-                        }
-                    }
-                    console.log(columns);
-                    Read(columns);
-                    parser.abort();
-                }
-            },
-            complete: function() {
-                console.log("All done!");
-            }
-        });
-    }
-    else
-    {
-        if(!spanishDomain){
-            Read("First choose a distribution using the voice command: Choose distribution 1 (or the desired number).");
-        } else {
-            Read("Primero elegir la distribución usando el comando de voz: Elegir distribución 1 (o el número deseado).");
-        }
-    }
-
-}
-
-function readCSVFromDistribution(distributionURL){
-    console.log("readCSVFromDistribution: " + distributionURL);
-    var xhr = new XMLHttpRequest();
-    // Using https://cors-anywhere.herokuapp.com/ allows us to download http (insecure) datasets from https pages
-    xhr.open("GET", "https://cors-anywhere.herokuapp.com/" + distributionURL, true);
-    //xhr.setRequestHeader("Origin", '*');
-    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-    xhr.onreadystatechange = function() {
-          console.log(JSON.stringify(xhr));
-      if (xhr.readyState === 4) {
-        if (xhr.status === 200) {
-          console.log(xhr.responseText);
-        }
-      }
-    }
-    xhr.send();
 }
 
 /*(function() {
