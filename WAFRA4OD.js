@@ -1,6 +1,20 @@
 // ==UserScript==
 // @name         WAFRA4OD
 // @namespace    http://tampermonkey.net/
+// @version      0.1.3
+// @description  WAFRA for Open Data (WAFRA4OD)
+// @author       Cesar Gonzalez Mora
+// @match        *://www.europeandataportal.eu/*
+// @noframes
+// @exclude      *://www.youtube.com/embed/*
+// @grant        none
+// @require http://code.jquery.com/jquery-3.3.1.slim.min.js
+// @require http://code.jquery.com/jquery-3.3.1.min.js
+// @require https://unpkg.com/papaparse@5.3.0/papaparse.min.js
+// ==/UserScript==
+// ==UserScript==
+// @name         WAFRA4OD
+// @namespace    http://tampermonkey.net/
 // @version      0.1.2
 // @description  WAFRA for Open Data (WAFRA4OD)
 // @author       Cesar Gonzalez Mora
@@ -10,6 +24,7 @@
 // @grant        none
 // @require http://code.jquery.com/jquery-3.3.1.slim.min.js
 // @require http://code.jquery.com/jquery-3.3.1.min.js
+// @require https://unpkg.com/papaparse@5.3.0/papaparse.min.js
 // ==/UserScript==
 
 
