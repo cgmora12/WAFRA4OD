@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WAFRA4OD
 // @namespace    http://tampermonkey.net/
-// @version      0.1.4
+// @version      0.1.5
 // @description  WAFRA for Open Data (WAFRA4OD)
 // @author       Cesar Gonzalez Mora
 // @match        *://www.europeandataportal.eu/*
@@ -12,6 +12,7 @@
 // @require http://code.jquery.com/jquery-3.3.1.min.js
 // @require https://unpkg.com/papaparse@5.3.0/papaparse.min.js
 // ==/UserScript==
+
 
 /*********************** Variables ************************/
 var myStorage = window.localStorage;
@@ -140,12 +141,13 @@ function init (){
     }
 
     /*********************** Add new operations here ************************/
-    var welcome, search, addFilter, increaseFontSizeOperation, decreaseFontSizeOperation, readAloudOperation, goToOperation, goBackOperation, breadCrumbOperation;
+    var welcome, search, addFilter, category, increaseFontSizeOperation, decreaseFontSizeOperation, readAloudOperation, goToOperation, goBackOperation, breadCrumbOperation;
     /*id; name; voiceCommand; activable; active; editable; hasMenu; mainPage; resultsPage; datasetPage;*/
     if(!spanishDomain){
         welcome = new WelcomeOperation("welcomeOperation", "Welcome", "welcome", true, true, true, false, true, true, true);
         search = new SearchOperation("searchOperation", "Search", "search", true, true, true, false, true, true, false);
         addFilter = new AddFilterOperation("addFilterOperation", "Add filter", "add filter", true, true, true, true, false, true, false);
+        category = new CategoryOperation("categoryOperation", "Category", "category", true, true, true, true, true, true, false);
         increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperation", "Increase Font Size", "increase font size", true, true, true, false, true, true, true);
         decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperation", "Decrease Font Size", "decrease font size", true, true, true, false, true, true, true);
         readAloudOperation = new ReadAloudOperation("readAloud", "Read Aloud", "read aloud", true, true, true, true, false, false, true);
@@ -155,6 +157,7 @@ function init (){
         welcome = new WelcomeOperation("welcomeOperationES", "Bienvenida", "bienvenida", true, true, true, false, true, true, true);
         search = new SearchOperation("searchOperationES", "Buscar", "buscar", true, true, true, false, true, true, false);
         addFilter = new AddFilterOperation("addFilterOperationES", "Añadir filtro", "añadir filtro", true, true, true, true, false, true, false);
+        category = new CategoryOperation("categoryOperationES", "Categoría", "categoría", true, true, true, true, true, true, false);
         increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperationES", "Aumentar Tamaño Letra", "aumentar tamaño letra", true, true, true, false, true, true, true);
         decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperationES", "Reducir Tamaño Letra", "reducir tamaño letra", true, true, true, false, true, true, true);
         readAloudOperation = new ReadAloudOperation("readAloudES", "Leer en voz alta", "leer", true, true, true, true, false, false, true);
@@ -346,6 +349,30 @@ class AddFilterOperation extends Operation {
             addFilter(parameters);
         } else {
             addFilter("");
+        }
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
+class CategoryOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation(category) {
+        if(typeof category !== 'undefined'){
+            var parameters = category.currentTarget.params;
+            addCategory(parameters);
+        } else {
+            addCategory("");
         }
     }
 
@@ -1922,6 +1949,115 @@ function addFilter(filter){
                     else{
                         Read("El filtro no existe, por favor pruebe otro filtro.");
                     }
+                }
+            }
+        }
+
+    }
+
+}
+
+function addCategory(category){
+
+    var readContent = "";
+
+    if(category == null || typeof category == 'undefined' || category == "[object MouseEvent]"){
+        category = "";
+    }
+
+    if(category == ""){
+        // read aloud available categories
+        if(apiResultPortalMetadata !== null && apiResultPortalMetadata !== ""
+           && apiResultPortalMetadata.facets !== null && apiResultPortalMetadata.facets !== ""){
+            for(var j = 0; j < apiResultPortalMetadata.facets.length; j++){
+                if(apiResultPortalMetadata.facets[j].id == "categories"){
+                    for(var k = 0; k < apiResultPortalMetadata.facets[j].items.length; k++){
+                        //check for language tag
+                        if(apiResultPortalMetadata.facets[j].items[k].title.en && !spanishDomain){
+                            readContent += apiResultPortalMetadata.facets[j].items[k].title.en + "; ";
+                        } else if(apiResultPortalMetadata.facets[j].items[k].title.es && spanishDomain){
+                            readContent += apiResultPortalMetadata.facets[j].items[k].title.es + "; ";
+                        } else {
+                            readContent += apiResultPortalMetadata.facets[j].items[k].title + "; ";
+                        }
+                    }
+                }
+            }
+        }
+
+        if(readContent == ""){
+            if(!spanishDomain){
+                Read("No categories are available now, please try again later or in other page of the portal.");
+            }
+            else{
+                Read("Ahora no hay categorías disponibles, prueba más tarde o en otra página del portal.");
+            }
+        } else {
+            if(!spanishDomain){
+                Read("The available categories are: " + readContent + ". You can use the same voice command indicating the category name.");
+            }
+            else{
+                Read("Las categorías disponibles son: " + readContent + ". Puedes utilizar el mismo comando de voz indicando el nombre de la categoría.");
+            }
+        }
+
+    } else {
+        //apply specific category if existing
+        var categoryValue = category;
+        var categoryValueId = "";
+        var categoryValueExists = false, filterExists = false;
+        // check if filter exist, if value is possible and get value id to apply filter
+        for(var a = 0; a < apiResultPortalMetadata.facets.length && !filterExists; a++){
+            if(apiResultPortalMetadata.facets[a].id == "categories"){
+                filterExists = true;
+                for(var b = 0; b < apiResultPortalMetadata.facets[a].items.length && !categoryValueExists; b++){
+                    //check for language tag
+                    var filterValueNormalized = categoryValue.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '').replace(/\s+/g,' ').trim().toLowerCase().replace(",","");
+                    var titleNormalized;
+                    if(apiResultPortalMetadata.facets[a].items[b].title.en && !spanishDomain){
+                        titleNormalized = apiResultPortalMetadata.facets[a].items[b].title.en.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '').replace(/\s+/g,' ').trim().toLowerCase().replace(",","");
+                    } else if(apiResultPortalMetadata.facets[a].items[b].title.es && spanishDomain){
+                        titleNormalized = apiResultPortalMetadata.facets[a].items[b].title.es.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '').replace(/\s+/g,' ').trim().toLowerCase().replace(",","");
+                    } else {
+                        titleNormalized = apiResultPortalMetadata.facets[a].items[b].title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '').replace(/\s+/g,' ').trim().toLowerCase().replace(",","");
+                    }
+                    if(titleNormalized == filterValueNormalized){
+                        categoryValueExists = true;
+                        categoryValueId = apiResultPortalMetadata.facets[a].items[b].id;
+                    }
+                }
+            }
+        }
+
+        if(filterExists && categoryValueExists){
+            if(!spanishDomain){
+                Read("Applying the category and redirecting to the results page.");
+            }
+            else{
+                Read("Aplicando la categoría y redirigiendo a la página de resultados.");
+            }
+            setTimeout(function(){
+                if(mainPage){
+                    window.location.href = "/data/datasets?categories=" + categoryValueId;
+                }
+                else {
+                    window.location.href = window.location.href + "&categories=" + categoryValueId;
+                }
+            }, 3000);
+        } else {
+            if(filterExists){
+                if(!spanishDomain){
+                    Read("The filter value does not exist, please try other value.");
+                }
+                else{
+                    Read("El valor a filtrar no es válido, por favor pruebe otro valor.");
+                }
+            } else {
+                if(!spanishDomain){
+                    Read("The filter does not exist, please try other filter.");
+                }
+                else{
+                    Read("El filtro no existe, por favor pruebe otro filtro.");
                 }
             }
         }
