@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WAFRA4OD
 // @namespace    http://tampermonkey.net/
-// @version      0.1.3
+// @version      0.1.4
 // @description  WAFRA for Open Data (WAFRA4OD)
 // @author       Cesar Gonzalez Mora
 // @match        *://www.europeandataportal.eu/*
@@ -12,21 +12,6 @@
 // @require http://code.jquery.com/jquery-3.3.1.min.js
 // @require https://unpkg.com/papaparse@5.3.0/papaparse.min.js
 // ==/UserScript==
-// ==UserScript==
-// @name         WAFRA4OD
-// @namespace    http://tampermonkey.net/
-// @version      0.1.2
-// @description  WAFRA for Open Data (WAFRA4OD)
-// @author       Cesar Gonzalez Mora
-// @match        *://www.europeandataportal.eu/*
-// @noframes
-// @exclude      *://www.youtube.com/embed/*
-// @grant        none
-// @require http://code.jquery.com/jquery-3.3.1.slim.min.js
-// @require http://code.jquery.com/jquery-3.3.1.min.js
-// @require https://unpkg.com/papaparse@5.3.0/papaparse.min.js
-// ==/UserScript==
-
 
 /*********************** Variables ************************/
 var myStorage = window.localStorage;
@@ -36,8 +21,7 @@ const SpeechGrammarList = window.SpeechGrammarList || window.webkitSpeechGrammar
 const recognition = new SpeechRecognition();
 var timeoutResumeInfinity;
 
-var datasetPage = false;
-var apiResult;
+var apiResultDataset, apiResultPortalMetadata;
 var distributionData = [];
 var numberOfRowsToAutoDownload = 100;
 var distributionDownloaded = false;
@@ -50,6 +34,7 @@ var recognitionFailedText = "Command not recognised, please try again.";
 var recognitionFailedTextES = "Comando no reconocido, por favor inténtelo de nuevo.";
 var reading = false;
 var readFirstTime = true;
+var mainPage = false, resultsPage = false, datasetPage = false;
 
 var operations = [];
 
@@ -61,7 +46,6 @@ var spanishDomain = false;
 var languageCodeSyntesisES = "es";
 var languageCodeCommandsES = "es";
 
-var listOperationsCommand = "list operations";
 var welcomeCommand = "welcome";
 var stopListeningCommand = "stop listening";
 var changeCommand = "change";
@@ -72,8 +56,6 @@ var changeCommandQuestion = "which command";
 var newCommandQuestion = "which is the new command";
 var chooseDistributionCommand = "choose distribution";
 var downloadDistributionCommand = "download";
-
-var listOperationsCommandES = "listar operaciones";
 
 var readFasterCommand = "faster";
 var readFasterCommandES = "más rápido";
@@ -105,6 +87,12 @@ var goToParamsES = ["distribuciones", "descripción"];
 
 /*********************** Page is loaded ************************/
 $(document).ready(function() {
+    setTimeout(function(){
+        init();
+    }, 1000);
+});
+
+function init (){
     //<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
     /*var meta = document.createElement('meta');
     meta.httpEquiv = "Content-Security-Policy";
@@ -139,26 +127,39 @@ $(document).ready(function() {
 
     if(document.URL.startsWith("https://www.europeandataportal.eu/data/datasets/")){
         datasetPage = true;
-        var apiURL = document.URL.replace("https://www.europeandataportal.eu/data/datasets/", "https://www.europeandataportal.eu/data/search/datasets/");
-        queryAPI(apiURL);
+        var apiURLdataset = document.URL.replace("https://www.europeandataportal.eu/data/datasets/", "https://www.europeandataportal.eu/data/search/datasets/");
+        queryAPIdataset(apiURLdataset);
+    } else if(document.URL.startsWith("https://www.europeandataportal.eu/data/datasets")){
+        resultsPage = true;
+        var apiURLresultsPage = "https://www.europeandataportal.eu/data/search/search";
+        queryAPIportalMetadata(apiURLresultsPage);
+    } else if(document.URL.startsWith("https://www.europeandataportal.eu")){
+        mainPage = true;
+        var apiURLmainPage = "https://www.europeandataportal.eu/data/search/search";
+        queryAPIportalMetadata(apiURLmainPage);
     }
 
     /*********************** Add new operations here ************************/
-    var increaseFontSizeOperation, decreaseFontSizeOperation, readAloudOperation, goToOperation, goBackOperation, breadCrumbOperation;
+    var welcome, search, addFilter, increaseFontSizeOperation, decreaseFontSizeOperation, readAloudOperation, goToOperation, goBackOperation, breadCrumbOperation;
+    /*id; name; voiceCommand; activable; active; editable; hasMenu; mainPage; resultsPage; datasetPage;*/
     if(!spanishDomain){
-        increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperation", "Increase Font Size", "increase font size", true, true, true, false);
-        decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperation", "Decrease Font Size", "decrease font size", true, true, true, false);
-        readAloudOperation = new ReadAloudOperation("readAloud", "Read Aloud", "read aloud", true, true, true, true);
-        goToOperation = new GoToOperation("goTo", "Go To", "go to", true, true, true, true);
-        goBackOperation = new GoBackOperation("goBack", "Go Back", "go back", true, true, true, false);
+        welcome = new WelcomeOperation("welcomeOperation", "Welcome", "welcome", true, true, true, false, true, true, true);
+        search = new SearchOperation("searchOperation", "Search", "search", true, true, true, false, true, true, false);
+        addFilter = new AddFilterOperation("addFilterOperation", "Add filter", "add filter", true, true, true, true, false, true, false);
+        increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperation", "Increase Font Size", "increase font size", true, true, true, false, true, true, true);
+        decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperation", "Decrease Font Size", "decrease font size", true, true, true, false, true, true, true);
+        readAloudOperation = new ReadAloudOperation("readAloud", "Read Aloud", "read aloud", true, true, true, true, false, false, true);
+        goBackOperation = new GoBackOperation("goBack", "Go Back", "go back", true, true, true, false, false, true, true);
         breadCrumbOperation = new BreadcrumbOperation("breadcrumb", "Breadcrumb", "", true, true, true, false);
     } else {
-        increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperation", "Aumentar Tamaño Letra", "aumentar tamaño letra", true, true, true, false);
-        decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperation", "Reducir Tamaño Letra", "reducir tamaño letra", true, true, true, false);
-        readAloudOperation = new ReadAloudOperation("readAloud", "Leer en voz alta", "leer", true, true, true, true);
-        goToOperation = new GoToOperation("goTo", "Ir a", "ir a", true, true, true, true);
-        goBackOperation = new GoBackOperation("goBack", "Volver", "volver", true, true, true, false);
-        breadCrumbOperation = new BreadcrumbOperation("breadcrumb", "Panel navegación", "", true, true, true, false);
+        welcome = new WelcomeOperation("welcomeOperationES", "Bienvenida", "bienvenida", true, true, true, false, true, true, true);
+        search = new SearchOperation("searchOperationES", "Buscar", "buscar", true, true, true, false, true, true, false);
+        addFilter = new AddFilterOperation("addFilterOperationES", "Añadir filtro", "añadir filtro", true, true, true, true, false, true, false);
+        increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperationES", "Aumentar Tamaño Letra", "aumentar tamaño letra", true, true, true, false, true, true, true);
+        decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperationES", "Reducir Tamaño Letra", "reducir tamaño letra", true, true, true, false, true, true, true);
+        readAloudOperation = new ReadAloudOperation("readAloudES", "Leer en voz alta", "leer", true, true, true, true, false, false, true);
+        goBackOperation = new GoBackOperation("goBackES", "Volver", "volver", true, true, true, false, false, true, true);
+        breadCrumbOperation = new BreadcrumbOperation("breadcrumbES", "Panel navegación", "", true, true, true, false, true, true, true);
     }
 
     checkFocus();
@@ -178,8 +179,7 @@ $(document).ready(function() {
         getDistributions();
     }, 1000);*/
 
-
-});
+}
 
 
 /**
@@ -246,7 +246,12 @@ class Operation {
     name;
     voiceCommand;
     activable;
-    editable;*/
+    active;
+    editable;
+    hasMenu;
+    mainPage;
+    resultsPage;
+    datasetPage;*/
 
     constructor() {
         if (this.constructor == Operation) {
@@ -270,8 +275,7 @@ class Operation {
         throw new Error("Method 'stopOperation()' must be implemented.");
     }
 
-
-    initOperation(id, name, voiceCommand, activable, active, editable, hasMenu) {
+    initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage) {
         this.id = id;
         this.name = name;
         this.voiceCommand = voiceCommand;
@@ -280,15 +284,80 @@ class Operation {
         this.active = active;
         this.editable = editable;
         this.hasMenu = hasMenu;
+        this.mainPage = mainPage;
+        this.resultsPage = resultsPage;
+        this.datasetPage = datasetPage;
         operations.push(this);
     }
 }
 
+class WelcomeOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation() {
+        say();
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
+class SearchOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation(term) {
+        var parameters = term.currentTarget.params;
+        search(parameters);
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
+class AddFilterOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation(filter) {
+        if(typeof filter !== 'undefined'){
+            var parameters = filter.currentTarget.params;
+            addFilter(parameters);
+        } else {
+            addFilter("");
+        }
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
 
 class IncreaseFontSizeOperation extends Operation {
-    constructor(id, name, voiceCommand, activable, active, editable, hasMenu){
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
         super();
-        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu);
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
     }
 
     configureOperation(){
@@ -321,9 +390,9 @@ class IncreaseFontSizeOperation extends Operation {
 
 
 class DecreaseFontSizeOperation extends Operation {
-    constructor(id, name, voiceCommand, activable, active, editable, hasMenu){
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
         super();
-        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu);
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
     }
 
     configureOperation(){
@@ -355,9 +424,9 @@ class DecreaseFontSizeOperation extends Operation {
 }
 
 class ReadAloudOperation extends Operation {
-    constructor(id, name, voiceCommand, activable, active, editable, hasMenu){
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
         super();
-        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu);
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
     }
 
     configureOperation() {
@@ -436,55 +505,11 @@ function readAloud(params){
     //Read(readContent);
 }
 
-class GoToOperation extends Operation {
-    constructor(id, name, voiceCommand, activable, active, editable, hasMenu){
-        super();
-        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu);
-    }
-
-    configureOperation() {
-        createSubmenuForOperationGoTo("menu-" + this.id, this);
-    }
-
-    openMenu() {
-        closeOperationsMenu();
-        showSubmenu("menu-" + this.id);
-    }
-
-    startOperation(params) {
-        var parameters = params.currentTarget.params;
-        goTo(parameters);
-    }
-
-    stopOperation() {
-        console.log("Stop operation");
-    }
-}
-
-// Go to
-function goTo(params){
-
-    console.log("goTo: " + params);
-    //closeGoToMenu();
-    closeMenu();
-    closeOperationsMenu();
-
-    //TODO: for goToParams and go to specific content
-    switch(params){
-        case "distributions":
-            params = "/html/body/div/div/div[2]/div/div[2]/div[3]/div/div/h3";
-            break;
-    }
-    var element = getElementByXPath(params);
-    element.scrollIntoView();
-
-}
-
 // Go back
 class GoBackOperation extends Operation {
-    constructor(id, name, voiceCommand, activable, active, editable, hasMenu){
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
         super();
-        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu);
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
     }
 
     configureOperation() {
@@ -514,9 +539,9 @@ function goBack(){
 
 // BreadCrumb
 class BreadcrumbOperation extends Operation {
-    constructor(id, name, voiceCommand, activable, active, editable, hasMenu){
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
         super();
-        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu);
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
     }
 
     configureOperation() {
@@ -573,7 +598,7 @@ function initWAFRA() {
 
     var divMenu = document.createElement("div");
     divMenu.id = "menu-webaugmentation";
-    divMenu.style = "position: fixed; right: 2%; top: 2%; z-index: 100; line-height: 140%;";
+    divMenu.style = "position: fixed; left: 2%; top: 12%; z-index: 100; line-height: 140%;";
     var menuLinkDiv = document.createElement("div");
     menuLinkDiv.id = "div-webaugmentation";
     var menuLink = document.createElement("a");
@@ -604,6 +629,7 @@ function createMenus(){
 
     var aToggleListening = document.createElement('a');
     aToggleListening.id = "toggleListeningA";
+    aToggleListening.href = 'javascript:;';
     aToggleListening.addEventListener("click", function(){
         closeMenu();
         if(recognitionActive){
@@ -653,11 +679,10 @@ function createMenus(){
 
     var a5 = document.createElement('a');
     a5.id = "voiceCommandsA";
-    //a5.href = '';
+    a5.href = 'javascript:;';
     a5.addEventListener("click", function(){
         toggleMenu();
         toggleCommandsMenu();
-        closeAnnotationsMenu();
         closeOperationsMenu();
     }, false);
     if(!spanishDomain){
@@ -670,6 +695,7 @@ function createMenus(){
 
     var aOperations = document.createElement('a');
     aOperations.id = "operationsA";
+    aOperations.href = 'javascript:;';
     aOperations.addEventListener("click", toggleOperationsMenu, false);
     if(!spanishDomain){
         aOperations.text = 'Accessibility Operations';
@@ -680,10 +706,9 @@ function createMenus(){
 
     var i = document.createElement('i');
     i.className = 'fa fa-close'
-    i.style = "position: absolute; right: 10%; top: 20%; z-index: 100;"
+    i.style = "position: absolute; right: 10%; top: 40%; z-index: 100;"
     i.addEventListener("click", closeMenu, false);
     divButtons.appendChild(i);
-
 
     document.getElementById("div-webaugmentation").appendChild(divButtons);
 
@@ -704,55 +729,59 @@ function createOperationsMenu(){
     divButtons.appendChild(i);
 
     for(var operationsIndex = 0; operationsIndex < operations.length; operationsIndex++){
-        var a = document.createElement('a');
-        a.id = operations[operationsIndex].id;
-        //a.href = '';
-        a.text = operations[operationsIndex].name;
-        operations[operationsIndex].configureOperation();
-        if(operations[operationsIndex].hasMenu){
-            a.addEventListener("click", operations[operationsIndex].openMenu, false);
-        } else {
-            a.addEventListener("click", operations[operationsIndex].startOperation, false);
-        }
-        divButtons.appendChild(a);
-
-        if(operations[operationsIndex].activable){
-            var input = document.createElement('input');
-            input.type = 'checkbox';
-            input.id = operations[operationsIndex].id + "Input";
-            input.value = operations[operationsIndex].id + "Input";
-            input.checked = operations[operationsIndex].active;
-            input.style.setProperty("margin-left", "5px");
-            if(operations[operationsIndex].active){
-                a.style.setProperty("pointer-events", "all");
+        if((mainPage && operations[operationsIndex].mainPage) ||
+           (resultsPage && operations[operationsIndex].resultsPage) ||
+           (datasetPage && operations[operationsIndex].datasetPage)){
+            var a = document.createElement('a');
+            a.id = operations[operationsIndex].id.replaceAll('ES','');
+            a.href = 'javascript:;';
+            a.text = operations[operationsIndex].name;
+            operations[operationsIndex].configureOperation();
+            if(operations[operationsIndex].hasMenu){
+                a.addEventListener("click", operations[operationsIndex].openMenu, false);
             } else {
-                a.style.setProperty("pointer-events", "none");
+                a.addEventListener("click", operations[operationsIndex].startOperation, false);
             }
+            divButtons.appendChild(a);
 
-            input.addEventListener("change", function(){
-                for(var operationsI = 0; operationsI < operations.length; operationsI++){
-                    if(operations[operationsI].id === this.id.split("Input").join("")){
-                        if(!this.checked){
-                            operations[operationsI].active = false;
-                            myStorage.setItem(operations[operationsI].id + "Active", operations[operationsI].active);
-                            document.getElementById(operations[operationsI].id).style.setProperty("pointer-events", "none");
-                        } else {
-                            operations[operationsI].active = true;
-                            myStorage.setItem(operations[operationsI].id + "Active", operations[operationsI].active);
-                            document.getElementById(operations[operationsI].id).style.setProperty("pointer-events", "all");
-                        }
+            if(operations[operationsIndex].activable){
+                var input = document.createElement('input');
+                input.type = 'checkbox';
+                input.id = operations[operationsIndex].id.replaceAll('ES','') + "Input";
+                input.value = operations[operationsIndex].id.replaceAll('ES','') + "Input";
+                input.checked = operations[operationsIndex].active;
+                input.style.setProperty("margin-left", "5px");
+                if(operations[operationsIndex].active){
+                    a.style.setProperty("pointer-events", "all");
+                } else {
+                    a.style.setProperty("pointer-events", "none");
+                }
 
-                        if(this.id.split("Input").join("") === "readAloud"){
-                            toggleReadAloud();
-                        } else if(this.id.split("Input").join("") === "breadcrumb"){
-                            toggleBreadcrumb();
+                input.addEventListener("change", function(){
+                    for(var operationsI = 0; operationsI < operations.length; operationsI++){
+                        if(operations[operationsI].id.replaceAll('ES','') === this.id.split("Input").join("")){
+                            if(!this.checked){
+                                operations[operationsI].active = false;
+                                myStorage.setItem(operations[operationsI].id + "Active", operations[operationsI].active);
+                                document.getElementById(operations[operationsI].id).style.setProperty("pointer-events", "none");
+                            } else {
+                                operations[operationsI].active = true;
+                                myStorage.setItem(operations[operationsI].id + "Active", operations[operationsI].active);
+                                document.getElementById(operations[operationsI].id).style.setProperty("pointer-events", "all");
+                            }
+
+                            if(this.id.split("Input").join("") === "readAloud"){
+                                toggleReadAloud();
+                            } else if(this.id.split("Input").join("") === "breadcrumb"){
+                                toggleBreadcrumb();
+                            }
                         }
                     }
-                }
-            }, false);
-            divButtons.appendChild(input);
+                }, false);
+                divButtons.appendChild(input);
+            }
+            divButtons.appendChild(document.createElement('br'));
         }
-        divButtons.appendChild(document.createElement('br'));
     }
     document.getElementById("div-webaugmentation").appendChild(divButtons);
 
@@ -769,7 +798,44 @@ function createOperationsMenu(){
 
 function say() {
     //speechSynthesis.speak(new SpeechSynthesisUtterance(txt));
-    readWelcome();
+    readWelcome()
+}
+
+function readWelcome(){
+    var readContent = "";
+    if(!spanishDomain){
+        readContent = "Welcome to " + document.title + "! The voice commands available are: ";
+        for(var i = 0; i < operations.length; i++){
+            if(mainPage && operations[i].mainPage){
+                readContent += operations[i].voiceCommand + ", ";
+            } else if(resultsPage && operations[i].resultsPage){
+                readContent += operations[i].voiceCommand + ", ";
+            } else if(datasetPage && operations[i].datasetPage){
+                readContent += operations[i].voiceCommand + ", ";
+            }
+        }
+        //TODO: remove when operations are created
+        readContent += stopListeningCommand + ", " + chooseDistributionCommand + ", " + changeCommand + ", "
+            + activateCommand + ", " + deactivateCommand + ", " + readFasterCommand + ", " + readSlowerCommand + ". ";
+        //readContent += "The sections to read aloud are: " + readParams.toString() + ". And the sections to go directly are: " + goToParams.toString() + ".";
+    } else {
+        readContent = "¡Bienvenido a " + document.title + "! Los comandos de voz disponibles son: ";
+        for(var j = 0; j < operations.length; j++){
+            if(mainPage && operations[j].mainPage){
+                readContent += operations[j].voiceCommand + ", ";
+            } else if(resultsPage && operations[j].resultsPage){
+                readContent += operations[j].voiceCommand + ", ";
+            } else if(datasetPage && operations[j].datasetPage){
+                readContent += operations[j].voiceCommand + ", ";
+            }
+        }
+        //TODO: remove when operations are created
+        readContent += stopListeningCommandES + ", " + chooseDistributionCommandES + ", " + changeCommandES + ", "
+            + activateCommandES + ", " + deactivateCommandES + ", " + readFasterCommandES + ", " + readSlowerCommandES + ". ";
+        //readContent += "Las secciones para leer en voz alta son: " + readParamsES.toString() + ". Y las secciones para ir directamente son: " + goToParamsES.toString() + ".";
+    }
+
+    Read(readContent);
 }
 
 
@@ -789,6 +855,7 @@ function createCommandsMenu(){
     for(var index = 0; index < operations.length; index++){
         var a1 = document.createElement('a');
         a1.id = operations[index].id + "Edit";
+        a1.href = 'javascript:;';
         if(!spanishDomain){
             a1.text = "'" + operations[index].name + "' command (" + operations[index].voiceCommand + ") ";
         } else {
@@ -844,6 +911,7 @@ function createSubmenuForOperationRead(menuId, operationForSubmenu){
             a1.text = "columnas";
             a1.params = "columnas";
         }
+        a1.href = 'javascript:;';
         a1.addEventListener("click", operationForSubmenu.startOperation, false);
         a1.operation = operationForSubmenu;
         divSubMenu.appendChild(a1);
@@ -876,6 +944,7 @@ function createSubmenuForOperationGoTo(menuId, operationForSubmenu){
             a1.text = "distribuciones";
             a1.params = "distribuciones";
         }
+        a1.href = 'javascript:;';
         a1.addEventListener("click", operationForSubmenu.startOperation, false);
         a1.operation = operationForSubmenu;
         divSubMenu.appendChild(a1);
@@ -903,51 +972,6 @@ function closeSubmenu(menuId){
         var x = divSubMenu.style;
         x.display = "none";
     }
-}
-
-function readWelcome(){
-    var readContent = "";
-    if(!spanishDomain){
-        readContent = "Welcome to " + document.title + "! The voice commands available are: ";
-        for(var i = 0; i < operations.length; i++){
-            readContent += operations[i].voiceCommand + ", ";
-        }
-        readContent += listOperationsCommand + ", " + welcomeCommand + ", " + stopListeningCommand + ", " + chooseDistributionCommand + ", " + changeCommand + ", "
-            + activateCommand + ", " + deactivateCommand + ", " + readFasterCommand + ", " + readSlowerCommand + ". ";
-        readContent += "The sections to read aloud are: " + readParams.toString() + ". And the sections to go directly are: " + goToParams.toString() + ".";
-    } else {
-        readContent = "¡Bienvenido a " + document.title + "! Los comandos de voz disponibles son: ";
-        for(var j = 0; j < operations.length; j++){
-            readContent += operations[j].voiceCommand + ", ";
-        }
-        readContent += listOperationsCommandES + ", " + welcomeCommandES + ", " + stopListeningCommandES + ", " + chooseDistributionCommandES + ", " + changeCommandES + ", "
-            + activateCommandES + ", " + deactivateCommandES + ", " + readFasterCommandES + ", " + readSlowerCommandES + ". ";
-        readContent += "Las secciones para leer en voz alta son: " + readParamsES.toString() + ". Y las secciones para ir directamente son: " + goToParamsES.toString() + ".";
-    }
-
-    Read(readContent);
-}
-
-function readOperations(){
-    var readContent = "";
-    if(!spanishDomain){
-        readContent = "The voice commands available are: ";
-        for(var i = 0; i < operations.length; i++){
-            readContent += operations[i].voiceCommand + ", ";
-        }
-        readContent += listOperationsCommand + ", " + welcomeCommand + ", " + stopListeningCommand + ", " + chooseDistributionCommand + ", " + changeCommand + ", "
-            + activateCommand + ", " + deactivateCommand + ", " + readFasterCommand + ", " + readSlowerCommand + ". ";
-        readContent += "The sections to read aloud are: " + readParams.toString() + ". And the sections to go directly are: " + goToParams.toString() + ".";
-    } else {
-        readContent = "Los comandos de voz disponibles son: ";
-        for(var j = 0; j < operations.length; j++){
-            readContent += operations[j].voiceCommand + ", ";
-        }
-        readContent += listOperationsCommandES + ", " + welcomeCommandES + ", " + stopListeningCommandES + ", " + chooseDistributionCommandES + ", " + changeCommandES + ", "
-            + activateCommandES + ", " + deactivateCommandES + ", " + readFasterCommandES + ", " + readSlowerCommandES + ". ";
-        readContent += "Las secciones para leer en voz alta son: " + readParamsES.toString() + ". Y las secciones para ir directamente son: " + goToParamsES.toString() + ".";
-    }
-    Read(readContent);
 }
 
 function textToAudio(){
@@ -1211,13 +1235,13 @@ function audioToText(){
             commandListened = speechToText;
             console.log(speechToText);
             if(!changeCommandInProcess1 && !changeCommandInProcess2){
-                if(speechToText.includes(listOperationsCommand) || speechToText.includes(listOperationsCommandES)){
+                /*if(speechToText.includes(listOperationsCommand) || speechToText.includes(listOperationsCommandES)){
                     readOperations();
                 }
                 else if(speechToText.includes(welcomeCommand) || speechToText.includes(welcomeCommandES)){
                     readWelcome();
-                }
-                else if(speechToText.includes(readFasterCommand) || speechToText.includes(readFasterCommandES)){
+                }*/
+                if(speechToText.includes(readFasterCommand) || speechToText.includes(readFasterCommandES)){
                     readFaster();
                 }
                 else if(speechToText.includes(readSlowerCommand) || speechToText.includes(readSlowerCommandES)){
@@ -1296,16 +1320,26 @@ function audioToText(){
                             if(operations[i].active){
                                 try{
                                     var cleanSpeechText = speechToText.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '').replace(/\s+/g,' ').trim().toLowerCase();
-                                    if(cleanSpeechText.includes(operations[i].voiceCommand)){
+                                    var cleanCommand = operations[i].voiceCommand.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '').replace(/\s+/g,' ').trim().toLowerCase();
+                                    var parametersCommand = cleanSpeechText.replaceAll(cleanCommand, "").trim();
+                                    if(parametersCommand !== "" && parametersCommand.length > 0 &&
+                                       ((operations[i].mainPage && mainPage) || (operations[i].resultsPage && resultsPage) || (operations[i].datasetPage && datasetPage))){
                                         var params = {};
                                         var current = {};
                                         params.currentTarget = current;
-                                        params.currentTarget.params = cleanSpeechText.replaceAll(operations[i].voiceCommand, "").trim();
+                                        params.currentTarget.params = parametersCommand;
                                         params.currentTarget.operation = operations[i];
                                         operations[i].startOperation(params);
                                         return;
-                                    } else {
+                                    } else if ((operations[i].mainPage && mainPage) || (operations[i].resultsPage && resultsPage) || (operations[i].datasetPage && datasetPage)){
                                         operations[i].startOperation();
+                                        return;
+                                    } else {
+                                        if(!spanishDomain){
+                                            Read("Operation " + operations[i].voiceCommand + " is not available in this page, please try in other pages of the portal.");
+                                        } else {
+                                            Read("Operación " + operations[i].voiceCommand + " no está disponible en esta página, por favor prueba en otras páginas del portal.");
+                                        }
                                         return;
                                     }
                                 }catch(e){}
@@ -1322,9 +1356,9 @@ function audioToText(){
                     if(recognitionFailedFirstTime){
                         recognitionFailedFirstTime = false;
                         if(!spanishDomain){
-                            Read(recognitionFailedText + " You can use: " + listOperationsCommand + " to know which operations are available and which sections can be read aloud.");
+                            Read(recognitionFailedText + " You can use: " + welcomeCommand + " to know which operations are available and which sections can be read aloud.");
                         } else {
-                            Read(recognitionFailedTextES + " Puedes usar: " + listOperationsCommandES + " para saber que operaciones están disponibles y qué secciones se pueden leer en voz alta.");
+                            Read(recognitionFailedTextES + " Puedes usar: " + welcomeCommandES + " para saber que operaciones están disponibles y qué secciones se pueden leer en voz alta.");
                         }
                     } else {
                         if(!spanishDomain){
@@ -1619,7 +1653,6 @@ function toggleMenu(){
             x.style.display = "block";
         }
         closeCommandsMenu();
-        closeAnnotationsMenu();
         closeOperationsMenu();
     }
 }
@@ -1697,7 +1730,7 @@ function getElementByXPath(path) {
   } );
 }*/
 
-function queryAPI(apiURL){
+function queryAPIdataset(apiURL){
     var xhr = new XMLHttpRequest();
     xhr.open("GET", apiURL, true);
     xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
@@ -1706,15 +1739,15 @@ function queryAPI(apiURL){
             if (xhr.status === 200) {
                 console.log("api queried: " + apiURL);
                 //console.log(xhr.responseText);
-                apiResult = JSON.parse(xhr.responseText).result;
-                console.log(apiResult);
+                apiResultDataset = JSON.parse(xhr.responseText).result;
+                console.log(apiResultDataset);
 
                 if(distributionChoosenURL === ""){
                     // choose distribution csv by order (last)
                     var csvDistribution, csvDistributionAux;
-                    for(var i = 0; i < apiResult.distributions.length; i++){
-                        if(apiResult.distributions[i].format != null && apiResult.distributions[i].format.id === "CSV"){
-                            csvDistribution = apiResult.distributions[i];
+                    for(var i = 0; i < apiResultDataset.distributions.length; i++){
+                        if(apiResultDataset.distributions[i].format != null && apiResultDataset.distributions[i].format.id === "CSV"){
+                            csvDistribution = apiResultDataset.distributions[i];
                             distributionChoosenURL = csvDistribution.access_url;
                             if(!spanishDomain){
                                 distributionChoosenTitle = csvDistribution.title.en;
@@ -1731,13 +1764,179 @@ function queryAPI(apiURL){
     xhr.send();
 }
 
+function queryAPIportalMetadata(apiURL){
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", apiURL, true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                console.log("api queried: " + apiURL);
+                //console.log(xhr.responseText);
+                apiResultPortalMetadata = JSON.parse(xhr.responseText).result;
+                console.log(apiResultPortalMetadata);
+            }
+        }
+    }
+    xhr.send(JSON.stringify({q: "string", filter: "dataset", limit: 0, searchParams: {minDate: "2021-01-04T13:42:27Z", maxDate: "2021-01-04T13:42:27Z"}}));
+}
+
+function search(term){
+
+    if(term == null || typeof term == 'undefined' || term == "[object MouseEvent]"){
+        term = "";
+    }
+
+    if(!spanishDomain){
+        Read("Performing the search and redirecting to the results page.");
+    }
+    else{
+        Read("Realizando la búsqueda y redirigiendo a la página de resultados.");
+    }
+    setTimeout(function(){
+        window.location.href = '/data/datasets?query=' + term;
+    }, 3000);
+}
+
+function addFilter(filter){
+
+    var readContent = "";
+
+    if(filter == null || typeof filter == 'undefined' || filter == "[object MouseEvent]"){
+        filter = "";
+    }
+
+    if(filter == ""){
+        // read aloud available filters
+        if(apiResultPortalMetadata !== null && apiResultPortalMetadata !== ""
+           && apiResultPortalMetadata.facets !== null && apiResultPortalMetadata.facets !== ""){
+            for(var i = 0; i < apiResultPortalMetadata.facets.length; i++){
+                readContent += apiResultPortalMetadata.facets[i].id + "; ";
+            }
+        }
+
+        if(readContent == ""){
+            if(!spanishDomain){
+                Read("No filters are available now, please try again later or in other page of the portal.");
+            }
+            else{
+                Read("Ahora no hay filtros disponibles, prueba más tarde o en otra página del portal.");
+            }
+        } else {
+            if(!spanishDomain){
+                Read("The available filters are: " + readContent + ". You can use the same voice command indicating the filter and its value.");
+            }
+            else{
+                Read("Los filtros disponibles son: " + readContent + ". Puedes utilizar el mismo comando de voz indicando el filtro que deseas y el valor a filtrar.");
+            }
+        }
+
+    } else {
+        //read available values for specific filter
+        if((filter.match(" ") || []).length == 0){
+            // No value is provided
+            for(var j = 0; j < apiResultPortalMetadata.facets.length; j++){
+                if(apiResultPortalMetadata.facets[j].id == filter){
+                    for(var k = 0; k < apiResultPortalMetadata.facets[j].items.length; k++){
+                        //check for language tag
+                        if(apiResultPortalMetadata.facets[j].items[k].title.en && !spanishDomain){
+                            readContent += apiResultPortalMetadata.facets[j].items[k].title.en + "; ";
+                        } else if(apiResultPortalMetadata.facets[j].items[k].title.es && spanishDomain){
+                            readContent += apiResultPortalMetadata.facets[j].items[k].title.es + "; ";
+                        } else {
+                            readContent += apiResultPortalMetadata.facets[j].items[k].title + "; ";
+                        }
+                    }
+                }
+            }
+
+            if(readContent == ""){
+                if(!spanishDomain){
+                    Read("The filter specified does not exist, please try again.");
+                }
+                else{
+                    Read("El filtro especificado no existe, por favor inténtalo de nuevo.");
+                }
+            } else {
+                if(!spanishDomain){
+                    Read("The available values for the filter " + filter + " are: " + readContent + ". You can use the same voice command indicating the filter and its value.");
+                }
+                else{
+                    Read("Los valores para el filtro " + filter + " son: " + readContent + ". Puedes utilizar el mismo comando de voz indicando el filtro que deseas y el valor a filtrar.");
+                }
+            }
+        } else {
+            //apply specific filter if existing
+            //{ "q": "string",  "filter": "dataset",  "limit": 10,  "facets": { "format": [ "CSV" ] } }
+
+            var filterId = filter.split(" ")[0];
+            var filterValue = filter.substring(filter.indexOf(" ") + 1);
+            var filterValueId = "";
+            var filterExists = false, filterValueExists = false;
+            // check if filter exist, if value is possible and get value id to apply filter
+            for(var a = 0; a < apiResultPortalMetadata.facets.length && !filterExists; a++){
+                if(apiResultPortalMetadata.facets[a].id == filterId){
+                    filterExists = true;
+                    for(var b = 0; b < apiResultPortalMetadata.facets[a].items.length && !filterValueExists; b++){
+                        //check for language tag
+                        var filterValueNormalized = filterValue.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '').replace(/\s+/g,' ').trim().toLowerCase().replace(",","");
+                        var titleNormalized;
+                        if(apiResultPortalMetadata.facets[a].items[b].title.en && !spanishDomain){
+                            titleNormalized = apiResultPortalMetadata.facets[a].items[b].title.en.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '').replace(/\s+/g,' ').trim().toLowerCase().replace(",","");
+                        } else if(apiResultPortalMetadata.facets[a].items[b].title.es && spanishDomain){
+                            titleNormalized = apiResultPortalMetadata.facets[a].items[b].title.es.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '').replace(/\s+/g,' ').trim().toLowerCase().replace(",","");
+                        } else {
+                            titleNormalized = apiResultPortalMetadata.facets[a].items[b].title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/gi, '').replace(/\s+/g,' ').trim().toLowerCase().replace(",","");
+                        }
+                        if(titleNormalized == filterValueNormalized){
+                            filterValueExists = true;
+                            filterValueId = apiResultPortalMetadata.facets[a].items[b].id;
+                        }
+                    }
+                }
+            }
+
+            if(filterExists && filterValueExists){
+                if(!spanishDomain){
+                    Read("Applying the filter and redirecting to the updated results page.");
+                }
+                else{
+                    Read("Aplicando los filtros y redirigiendo a la página con la lista actualizada.");
+                }
+                setTimeout(function(){
+                    window.location.href = window.location.href + "&" + filterId + "=" + filterValueId;
+                }, 3000);
+            } else {
+                if(filterExists){
+                    if(!spanishDomain){
+                        Read("The filter value does not exist, please try other value.");
+                    }
+                    else{
+                        Read("El valor a filtrar no es válido, por favor pruebe otro valor.");
+                    }
+                } else {
+                    if(!spanishDomain){
+                        Read("The filter does not exist, please try other filter.");
+                    }
+                    else{
+                        Read("El filtro no existe, por favor pruebe otro filtro.");
+                    }
+                }
+            }
+        }
+
+    }
+
+}
+
 function getTitleText(){
     console.log("getTitleText");
     var text = "";
     if(!spanishDomain){
-        text = "Title: " + apiResult.title.en;
+        text = "Title: " + apiResultDataset.title.en;
     } else {
-        text = "Título: " + apiResult.title.es;
+        text = "Título: " + apiResultDataset.title.es;
     }
     Read(text);
 }
@@ -1748,9 +1947,9 @@ function getDescriptionText(){
     //var descriptionElement = getElementByXPath("/html/body/div/div/div[2]/div/div[2]/div[1]/div/div/p");
     //text = descriptionElement.textContent;
     if(!spanishDomain){
-        text = "Description: " + apiResult.description.en;
+        text = "Description: " + apiResultDataset.description.en;
     } else {
-        text = "Descripción: " + apiResult.description.es;
+        text = "Descripción: " + apiResultDataset.description.es;
     }
     Read(text);
 }
@@ -1788,15 +1987,15 @@ function getDistributionsText(){
     }
 
     var format = "";
-    for(var i = 0; i < apiResult.distributions.length; i++){
+    for(var i = 0; i < apiResultDataset.distributions.length; i++){
         //format = distributionItems[i].firstElementChild.firstElementChild.firstElementChild.getAttribute("type");
         //if(format === "CSV"){
         var distributionNumber = i+1;
         var distributionTitle = "";
         if(!spanishDomain){
-            distributionTitle = apiResult.distributions[i].title.en;
+            distributionTitle = apiResultDataset.distributions[i].title.en;
         } else {
-            distributionTitle = apiResult.distributions[i].title.es;
+            distributionTitle = apiResultDataset.distributions[i].title.es;
         }
 
         text += distributionNumber + ", " + distributionTitle;
@@ -1816,10 +2015,10 @@ function chooseDistribution(number){
     console.log("chooseDistribution: " + number);
 
     if(number !== "" && number >= 1){
-        for(var i = 0; i < apiResult.distributions.length; i++){
+        for(var i = 0; i < apiResultDataset.distributions.length; i++){
             var index = i - 1;
-            if(apiResult.distributions[i].format.id.toLower() === "csv" && index === number){
-                var csvDistribution = apiResult.distributions[i];
+            if(apiResultDataset.distributions[i].format.id.toLower() === "csv" && index === number){
+                var csvDistribution = apiResultDataset.distributions[i];
                 distributionChoosenURL = csvDistribution.access_url;
                 if(!spanishDomain){
                     distributionChoosenTitle = csvDistribution.title.en;
@@ -1952,6 +2151,73 @@ function downloadDistributionToInteract(){
             }
         }
         xhr.send();*/
+}
+
+
+
+function createCSSSelector (selector, style) {
+  if (!document.styleSheets) return;
+  if (document.getElementsByTagName('head').length == 0) return;
+
+  var styleSheet,mediaType;
+
+  if (document.styleSheets.length > 0) {
+    for (var i = 0, l = document.styleSheets.length; i < l; i++) {
+      if (document.styleSheets[i].disabled)
+        continue;
+      var media = document.styleSheets[i].media;
+      mediaType = typeof media;
+
+      if (mediaType === 'string') {
+        if (media === '' || (media.indexOf('screen') !== -1)) {
+          styleSheet = document.styleSheets[i];
+        }
+      }
+      else if (mediaType=='object') {
+        if (media.mediaText === '' || (media.mediaText.indexOf('screen') !== -1)) {
+          styleSheet = document.styleSheets[i];
+        }
+      }
+
+      if (typeof styleSheet !== 'undefined')
+        break;
+    }
+  }
+
+  if (typeof styleSheet === 'undefined') {
+    var styleSheetElement = document.createElement('style');
+    styleSheetElement.type = 'text/css';
+    document.getElementsByTagName('head')[0].appendChild(styleSheetElement);
+
+    for (i = 0; i < document.styleSheets.length; i++) {
+      if (document.styleSheets[i].disabled) {
+        continue;
+      }
+      styleSheet = document.styleSheets[i];
+    }
+
+    mediaType = typeof styleSheet.media;
+  }
+
+  if (mediaType === 'string') {
+    for (i = 0, l = styleSheet.rules.length; i < l; i++) {
+      if(styleSheet.rules[i].selectorText && styleSheet.rules[i].selectorText.toLowerCase()==selector.toLowerCase()) {
+        styleSheet.rules[i].style.cssText = style;
+        return;
+      }
+    }
+    styleSheet.addRule(selector,style);
+  }
+  else if (mediaType === 'object') {
+    var styleSheetLength = (styleSheet.cssRules) ? styleSheet.cssRules.length : 0;
+    for (i = 0; i < styleSheetLength; i++) {
+      if (styleSheet.cssRules[i].selectorText && styleSheet.cssRules[i].selectorText.toLowerCase() == selector.toLowerCase()) {
+        styleSheet.cssRules[i].style.cssText = style;
+        return;
+      }
+    }
+    styleSheet.insertRule(selector + '{' + style + '}', styleSheetLength);
+  }
 }
 
 /*(function() {
