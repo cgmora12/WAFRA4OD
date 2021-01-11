@@ -22,7 +22,7 @@ const SpeechGrammarList = window.SpeechGrammarList || window.webkitSpeechGrammar
 const recognition = new SpeechRecognition();
 var timeoutResumeInfinity;
 
-var apiResultDataset, apiResultPortalMetadata;
+var apiResultDataset, apiResultPortalMetadata, apiResultPortalResults;
 var distributionData = [];
 var numberOfRowsToAutoDownload = 100;
 var distributionDownloaded = false;
@@ -133,7 +133,7 @@ function init (){
     } else if(document.URL.startsWith("https://www.europeandataportal.eu/data/datasets")){
         resultsPage = true;
         var apiURLresultsPage = "https://www.europeandataportal.eu/data/search/search";
-        queryAPIportalMetadata(apiURLresultsPage);
+        queryAPIportalMetadataWithResults(apiURLresultsPage);
     } else if(document.URL.startsWith("https://www.europeandataportal.eu")){
         mainPage = true;
         var apiURLmainPage = "https://www.europeandataportal.eu/data/search/search";
@@ -141,13 +141,14 @@ function init (){
     }
 
     /*********************** Add new operations here ************************/
-    var welcome, search, addFilter, category, increaseFontSizeOperation, decreaseFontSizeOperation, readAloudOperation, goToOperation, goBackOperation, breadCrumbOperation;
+    var welcome, search, addFilter, category, results, increaseFontSizeOperation, decreaseFontSizeOperation, readAloudOperation, goBackOperation, breadCrumbOperation;
     /*id; name; voiceCommand; activable; active; editable; hasMenu; mainPage; resultsPage; datasetPage;*/
     if(!spanishDomain){
         welcome = new WelcomeOperation("welcomeOperation", "Welcome", "welcome", true, true, true, false, true, true, true);
         search = new SearchOperation("searchOperation", "Search", "search", true, true, true, false, true, true, false);
         addFilter = new AddFilterOperation("addFilterOperation", "Add filter", "add filter", true, true, true, true, false, true, false);
         category = new CategoryOperation("categoryOperation", "Category", "category", true, true, true, true, true, true, false);
+        results = new ResultsOperation("resultsOperation", "Results", "results", true, true, true, false, false, true, false);
         increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperation", "Increase Font Size", "increase font size", true, true, true, false, true, true, true);
         decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperation", "Decrease Font Size", "decrease font size", true, true, true, false, true, true, true);
         readAloudOperation = new ReadAloudOperation("readAloud", "Read Aloud", "read aloud", true, true, true, true, false, false, true);
@@ -158,6 +159,7 @@ function init (){
         search = new SearchOperation("searchOperationES", "Buscar", "buscar", true, true, true, false, true, true, false);
         addFilter = new AddFilterOperation("addFilterOperationES", "Añadir filtro", "añadir filtro", true, true, true, true, false, true, false);
         category = new CategoryOperation("categoryOperationES", "Categoría", "categoría", true, true, true, true, true, true, false);
+        results = new ResultsOperation("resultsOperationES", "Resultados", "resultados", true, true, true, false, false, true, false);
         increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperationES", "Aumentar Tamaño Letra", "aumentar tamaño letra", true, true, true, false, true, true, true);
         decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperationES", "Reducir Tamaño Letra", "reducir tamaño letra", true, true, true, false, true, true, true);
         readAloudOperation = new ReadAloudOperation("readAloudES", "Leer en voz alta", "leer", true, true, true, true, false, false, true);
@@ -374,6 +376,25 @@ class CategoryOperation extends Operation {
         } else {
             addCategory("");
         }
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
+class ResultsOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation(category) {
+        results();
     }
 
     stopOperation() {
@@ -1809,6 +1830,61 @@ function queryAPIportalMetadata(apiURL){
     xhr.send(JSON.stringify({q: "string", filter: "dataset", limit: 0, searchParams: {minDate: "2021-01-04T13:42:27Z", maxDate: "2021-01-04T13:42:27Z"}}));
 }
 
+function queryAPIportalMetadataWithResults(apiURL){
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", apiURL, true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                console.log("api queried: " + apiURL);
+                //console.log(xhr.responseText);
+                apiResultPortalMetadata = JSON.parse(xhr.responseText).result;
+
+                var params = window.location.search;
+                var urlParams = new URLSearchParams(params);
+                var querySearch = urlParams.get('query');
+                if(querySearch == null){
+                    querySearch = "";
+                }
+
+                var sort = urlParams.get('sort');
+                if(sort == null){
+                    sort = "modification_date+desc";
+                }
+
+                var facetsObj = {};
+                if(apiResultPortalMetadata !== null && apiResultPortalMetadata !== ""
+                   && apiResultPortalMetadata.facets !== null && apiResultPortalMetadata.facets !== ""){
+                    for(var i = 0; i < apiResultPortalMetadata.facets.length; i++){
+                        if(urlParams.getAll(apiResultPortalMetadata.facets[i].id).length > 0){
+                            facetsObj[apiResultPortalMetadata.facets[i].id] = urlParams.getAll(apiResultPortalMetadata.facets[i].id);
+                        }
+                    }
+                }
+                console.log(facetsObj);
+                console.log(JSON.stringify(facetsObj));
+
+                var xhr2 = new XMLHttpRequest();
+                xhr2.open("POST", apiURL, true);
+                xhr2.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                xhr2.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+                xhr2.onreadystatechange = function() {
+                    if (xhr2.readyState === 4) {
+                        if (xhr2.status === 200) {
+                            apiResultPortalResults = JSON.parse(xhr2.responseText).result;
+                            console.log(apiResultPortalResults);
+                        }
+                    }
+                }
+                xhr2.send(JSON.stringify({q: querySearch, filter: "dataset", limit: 10, sort: [sort], facetOperator: "AND", facets: facetsObj}));
+            }
+        }
+    }
+    xhr.send(JSON.stringify({q: "string", filter: "dataset", limit: 10, searchParams: {minDate: "2021-01-04T13:42:27Z", maxDate: "2021-01-04T13:42:27Z"}}));
+}
+
 function search(term){
 
     if(term == null || typeof term == 'undefined' || term == "[object MouseEvent]"){
@@ -2063,7 +2139,55 @@ function addCategory(category){
         }
 
     }
+}
 
+function results(){
+    // read results from query with results
+    //console.log(JSON.stringify(apiResultPortalResults));
+    var readContent = "";
+
+    if(apiResultPortalResults !== null && apiResultPortalResults !== ""
+       && apiResultPortalResults.results !== null && apiResultPortalResults.results !== ""){
+        var indexAux = 1;
+        for(var i = 0; i < apiResultPortalResults.results.length; i++){
+            //TODO read title in language (if existing) and description (if possible).
+            var titleAux = "";
+            if(!spanishDomain){
+                titleAux = apiResultPortalResults.results[i].title.en;
+            } else {
+                titleAux = apiResultPortalResults.results[i].title.es;
+            }
+
+            if(titleAux == "" || typeof titleAux == 'undefined'){
+                if(Object.keys(apiResultPortalResults.results[i].title).length > 0){
+                    titleAux = apiResultPortalResults.results[i].title[Object.keys(apiResultPortalResults.results[i].title)[0]];
+                } else {
+                    titleAux = apiResultPortalResults.results[i].title
+                }
+            }
+
+            if(titleAux != "" && typeof titleAux != 'undefined'){
+                readContent += indexAux + ": " + titleAux + ", ";
+                indexAux++;
+            }
+        }
+    }
+
+    if(readContent == ""){
+        if(!spanishDomain){
+            Read("No results found, please try again with other filters.");
+        }
+        else{
+            Read("No se han encontrado resultados, por favor pruebe de nuevo con otros filtros.");
+        }
+    } else {
+        if(!spanishDomain){
+            Read("The results are: " + readContent + ".");
+        }
+        else{
+            Read("Los resultados son: " + readContent + ".");
+        }
+    }
 }
 
 function getTitleText(){
