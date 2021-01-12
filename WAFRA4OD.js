@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WAFRA4OD
 // @namespace    http://tampermonkey.net/
-// @version      0.1.6
+// @version      0.1.7
 // @description  WAFRA for Open Data (WAFRA4OD)
 // @author       Cesar Gonzalez Mora
 // @match        *://www.europeandataportal.eu/*
@@ -117,6 +117,25 @@ $(document).ready(function() {
     setTimeout(function(){
         init();
     }, 1000);
+
+    // check if url changes and call init
+    var oldHref = document.location.href;
+    window.onload = function() {
+        var bodyList = document.querySelector("body"), observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (oldHref != document.location.href) {
+                    oldHref = document.location.href;
+                    //init();
+                    location.reload();
+                }
+            });
+        });
+        var config = {
+            childList: true,
+            subtree: true
+        };
+        observer.observe(bodyList, config);
+    };
 });
 
 function init (){
@@ -167,7 +186,8 @@ function init (){
     }
 
     /*********************** Add new operations here ************************/
-    var welcome, search, addFilter, category, results, order, details, choose, removeFilter, increaseFontSizeOperation, decreaseFontSizeOperation, readAloudOperation, goBackOperation, breadCrumbOperation;
+    var welcome, search, addFilter, category, results, order, details, choose, removeFilter, readTitle, readDescription, readDistributions, readDetails,
+        increaseFontSizeOperation, decreaseFontSizeOperation, readAloudOperation, goBackOperation, breadCrumbOperation;
     /*id; name; voiceCommand; activable; active; editable; hasMenu; mainPage; resultsPage; datasetPage;*/
     if(!spanishDomain){
         welcome = new WelcomeOperation("welcomeOperation", "Welcome", "welcome", true, true, true, false, true, true, true);
@@ -179,6 +199,10 @@ function init (){
         details = new DetailsOperation("detailsOperation", "Details", "details", true, true, true, true, false, true, false);
         choose = new ChooseOperation("chooseOperation", "Choose", "choose", true, true, true, true, false, true, false);
         removeFilter = new RemoveFilterOperation("removeFilterOperation", "Remove filter", "remove filter", true, true, true, true, false, true, false);
+        readTitle = new ReadTitleOperation("readTitle", "Read title", "read title", true, true, true, false, false, false, true);
+        readDescription = new ReadDescriptionOperation("readDescription", "Read description", "read description", true, true, true, false, false, false, true);
+        readDistributions = new ReadDistributionsOperation("readDistributions", "Read distributions", "read distributions", true, true, true, false, false, false, true);
+        readDetails = new ReadDetailsOperation("readDetails", "Read details", "read details", true, true, true, false, false, false, true);
         increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperation", "Increase Font Size", "increase font size", true, true, true, false, true, true, true);
         decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperation", "Decrease Font Size", "decrease font size", true, true, true, false, true, true, true);
         readAloudOperation = new ReadAloudOperation("readAloud", "Read Aloud", "read aloud", true, true, true, true, false, false, true);
@@ -194,6 +218,10 @@ function init (){
         details = new DetailsOperation("detailsOperationES", "Detalles", "detalles", true, true, true, true, false, true, false);
         choose = new ChooseOperation("chooseOperationES", "Elegir", "elegir", true, true, true, true, false, true, false);
         removeFilter = new RemoveFilterOperation("removeFilterOperationES", "Quitar filtro", "quitar filtro", true, true, true, true, false, true, false);
+        readTitle = new ReadTitleOperation("readTitleES", "Leer título", "leer título", true, true, true, false, false, false, true);
+        readDescription = new ReadDescriptionOperation("readDescriptionES", "Leer descripción", "leer descripción", true, true, true, false, false, false, true);
+        readDistributions = new ReadDistributionsOperation("readDistributionsES", "Leer distribuciones", "leer distribuciones", true, true, true, false, false, false, true);
+        readDetails = new ReadDetailsOperation("readDetailsES", "Leer detalles", "leer detalles", true, true, true, false, false, false, true);
         increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperationES", "Aumentar Tamaño Letra", "aumentar tamaño letra", true, true, true, false, true, true, true);
         decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperationES", "Reducir Tamaño Letra", "reducir tamaño letra", true, true, true, false, true, true, true);
         readAloudOperation = new ReadAloudOperation("readAloudES", "Leer en voz alta", "leer", true, true, true, true, false, false, true);
@@ -532,6 +560,82 @@ class RemoveFilterOperation extends Operation {
     }
 }
 
+class ReadTitleOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation() {
+        getTitleText();
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
+class ReadDescriptionOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation() {
+        getDescriptionText();
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
+class ReadDistributionsOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation() {
+        getDistributionsText();
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
+class ReadDetailsOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation() {
+        getDetailsText();
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
 class IncreaseFontSizeOperation extends Operation {
     constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
         super();
@@ -774,9 +878,14 @@ function initWAFRA() {
     link2.href= 'https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css';
     document.head.appendChild(link2);
 
-    var divMenu = document.createElement("div");
-    divMenu.id = "menu-webaugmentation";
-    divMenu.style = "position: fixed; left: 2%; top: 12%; z-index: 100; line-height: 140%;";
+    var divMenu = document.getElementById("menu-webaugmentation");
+    if(divMenu != null){
+        divMenu.innerHTML = "";;
+    }else {
+        divMenu = document.createElement("div");
+        divMenu.id = "menu-webaugmentation";
+        divMenu.style = "position: fixed; left: 2%; top: 12%; z-index: 100; line-height: 140%;";
+    }
     var menuLinkDiv = document.createElement("div");
     menuLinkDiv.id = "div-webaugmentation";
     var menuLink = document.createElement("a");
@@ -796,7 +905,6 @@ function initWAFRA() {
 
 
 function createMenus(){
-
     var divButtons = document.createElement('div');
     divButtons.id = "foldingMenu";
     divButtons.style = "padding: 10px; border: 2px solid black; display: none; background-color: white";
@@ -1155,8 +1263,14 @@ function closeSubmenu(menuId){
 function textToAudio(){
     createPlayButtons();
 
-    var cancelfooter = document.createElement('div');
-    cancelfooter.id = "cancel";
+
+    var cancelfooter = document.getElementById("cancel");
+    if(cancelfooter != null){
+        cancelfooter.innerHTML = "";;
+    }else {
+        cancelfooter = document.createElement("div");
+        cancelfooter.id = "cancel";
+    }
     var buttonStop = document.createElement('button');
     if(!spanishDomain){
         buttonStop.innerText = "Stop";
@@ -1758,16 +1872,16 @@ function breadcrumb(){
     document.body.appendChild(breadcrumb);
     $('#BreadCrumb').css({
         'position': 'fixed',
-        'height': '50px',
+        //'height': '50px',
         'left': '15%',
-        'top': '0',
+        'top': '15%',
         //'width': '100%',
         'padding': '10px',
         'background-color': '#FFFFFF',
         'vertical-align': 'bottom',
         'visibility': 'visible',
         'border': 'solid black',
-        'z-index': '100'
+        'z-index': '99'
     });
     var lastVisitedSitesURLReverse = lastVisitedSitesURL.reverse()
     var lastVisitedSitesTitleReverse = lastVisitedSitesTitle.reverse()
@@ -2609,26 +2723,66 @@ function removeFilter(filter){
 
 function getTitleText(){
     console.log("getTitleText");
-    var text = "";
-    if(!spanishDomain){
-        text = "Title: " + apiResultDataset.title.en;
-    } else {
-        text = "Título: " + apiResultDataset.title.es;
+    var text = "", titleAux = "";
+    if(apiResultDataset !== null && apiResultDataset !== ""){
+        if(!spanishDomain){
+            text = "Title: ";
+            titleAux = apiResultDataset.title.en;
+        } else {
+            text = "Título: ";
+            titleAux = apiResultDataset.title.es;
+        }
+
+        if(titleAux == "" || typeof titleAux == 'undefined'){
+            if(Object.keys(apiResultDataset.title).length > 0){
+                titleAux = apiResultDataset.title[Object.keys(apiResultDataset.title)[0]];
+            } else {
+                titleAux = apiResultDataset.title;
+            }
+        }
     }
-    Read(text);
+
+    if(titleAux != "" || typeof titleAux != 'undefined'){
+        Read(text + titleAux);
+    } else {
+        if(!spanishDomain){
+            Read("No title available.");
+        } else {
+            Read("Título no disponible.");
+        }
+    }
 }
 
 function getDescriptionText(){
     console.log("getDescriptionText");
-    var text = "";
-    //var descriptionElement = getElementByXPath("/html/body/div/div/div[2]/div/div[2]/div[1]/div/div/p");
-    //text = descriptionElement.textContent;
-    if(!spanishDomain){
-        text = "Description: " + apiResultDataset.description.en;
-    } else {
-        text = "Descripción: " + apiResultDataset.description.es;
+    var text = "", descriptionAux = "";
+    if(apiResultDataset !== null && apiResultDataset !== ""){
+        if(!spanishDomain){
+            text = "Description: ";
+            descriptionAux = apiResultDataset.description.en;
+        } else {
+            text = "Descripción: ";
+            descriptionAux = apiResultDataset.description.es;
+        }
+
+        if(descriptionAux == "" || typeof descriptionAux == 'undefined'){
+            if(Object.keys(apiResultDataset.description).length > 0){
+                descriptionAux = apiResultDataset.description[Object.keys(apiResultDataset.description)[0]];
+            } else {
+                descriptionAux = apiResultDataset.description;
+            }
+        }
     }
-    Read(text);
+
+    if(descriptionAux != "" || typeof descriptionAux != 'undefined'){
+        Read(text + descriptionAux);
+    } else {
+        if(!spanishDomain){
+            Read("No description available.");
+        } else {
+            Read("Descripción no disponible.");
+        }
+    }
 }
 
 function downloadDistribution(){
@@ -2644,48 +2798,142 @@ function downloadDistribution(){
     delete link;
 
     if(!spanishDomain){
-        Read("Distribution downloaded to your computer.");
+        Read("Distribution downloading to your computer.");
     } else {
-        Read("Distribución descargada a su ordenador.");
+        Read("Distribución descargándose a su ordenador.");
     }
 }
 
 function getDistributionsText(){
-    //TODO: get text from api
     console.log("getDistributionsText");
     //var distributionItems = document.getElementsByClassName("distributions__item");
 
     var text = "";
+    if(apiResultDataset !== null && apiResultDataset !== ""){
+        if(!spanishDomain){
+            text += "The distributions available are: ";
+        } else {
+            text += "Las distribuciones disponibles son: ";
+        }
 
-    if(!spanishDomain){
-        text += "The distributions available are: ";
+        var format = "";
+        for(var i = 0; i < apiResultDataset.distributions.length; i++){
+            //format = distributionItems[i].firstElementChild.firstElementChild.firstElementChild.getAttribute("type");
+            //if(format === "CSV"){
+            var distributionNumber = i+1;
+            var distributionTitle = "";
+            if(!spanishDomain){
+                distributionTitle = apiResultDataset.distributions[i].title.en;
+            } else {
+                distributionTitle = apiResultDataset.distributions[i].title.es;
+            }
+
+            if(distributionTitle == "" || typeof distributionTitle == 'undefined'){
+                if(Object.keys(apiResultDataset.distributions[i].title).length > 0){
+                    distributionTitle = apiResultDataset.distributions[i].title[Object.keys(apiResultDataset.distributions[i].title)[0]];
+                } else {
+                    distributionTitle = apiResultDataset.distributions[i].title;
+                }
+            }
+
+            format = apiResultDataset.distributions[i].format.title;
+
+            text += distributionNumber + ";";
+
+            if(!spanishDomain){
+                if(format != "" && typeof format != 'undefined' && format != null){
+                    text += format + " format, ";
+                }
+                if(distributionTitle != "" && typeof distributionTitle != 'undefined' && distributionTitle != null){
+                    text += distributionTitle + ".";
+                }
+            } else {
+                if(format != "" && typeof format != 'undefined' && format != null){
+                    text += " formato " + format + ", ";
+                }
+                if(distributionTitle != "" && typeof distributionTitle != 'undefined' && distributionTitle != null){
+                    text += distributionTitle + ".";
+                }
+            }
+            //}
+        }
+    }
+
+    if(text != "" || typeof text != 'undefined'){
+        Read(text);
     } else {
-        text += "Las distribuciones disponibles son: ";
-    }
-
-    var format = "";
-    for(var i = 0; i < apiResultDataset.distributions.length; i++){
-        //format = distributionItems[i].firstElementChild.firstElementChild.firstElementChild.getAttribute("type");
-        //if(format === "CSV"){
-        var distributionNumber = i+1;
-        var distributionTitle = "";
         if(!spanishDomain){
-            distributionTitle = apiResultDataset.distributions[i].title.en;
+            Read("No distributions available.");
         } else {
-            distributionTitle = apiResultDataset.distributions[i].title.es;
+            Read("Distribuciones no disponibles.");
+        }
+    }
+}
+
+function getDetailsText(){
+    console.log("getDetailsText");
+
+    var text = "";
+
+    if(apiResultDataset !== null && apiResultDataset !== ""){
+        var titleAux = "", descriptionAux = "", publisher = "", country = "";
+
+        if(!spanishDomain){
+            titleAux = apiResultDataset.title.en;
+        } else {
+            titleAux = apiResultDataset.title.es;
         }
 
-        text += distributionNumber + ", " + distributionTitle;
+        if(titleAux == "" || typeof titleAux == 'undefined'){
+            if(Object.keys(apiResultDataset.title).length > 0){
+                titleAux = apiResultDataset.title[Object.keys(apiResultDataset.title)[0]];
+            } else {
+                titleAux = apiResultDataset.title;
+            }
+        }
 
         if(!spanishDomain){
-            text += " in " + format + " format; ";
+            descriptionAux = apiResultDataset.description.en;
         } else {
-            text += " en formato " + format + "; ";
+            descriptionAux = apiResultDataset.description.es;
         }
-        //}
+
+        if(descriptionAux == "" || typeof descriptionAux == 'undefined'){
+            if(Object.keys(apiResultDataset.description).length > 0){
+                descriptionAux = apiResultDataset.description[Object.keys(apiResultDataset.description)[0]];
+            } else {
+                descriptionAux = apiResultDataset.description;
+            }
+        }
+
+        country = apiResultDataset.country.title;
+        publisher = apiResultDataset.publisher.name;
+
+        if(titleAux != "" && typeof titleAux != 'undefined'){
+            text += titleAux;
+            if(descriptionAux != "" && typeof descriptionAux != 'undefined'){
+                text += ", " + descriptionAux;
+            }
+            if(country != "" && typeof country != 'undefined' && publisher != "" && typeof publisher != 'undefined'){
+                if(!spanishDomain){
+                    text += ", published by " + publisher + " in " + country;
+                }
+                else{
+                    text += ", publicado por " + publisher + " en " + country;
+                }
+            }
+        }
     }
 
-    Read(text);
+    if(text != "" || typeof text != 'undefined'){
+        Read(text);
+    } else {
+        if(!spanishDomain){
+            Read("No details available.");
+        } else {
+            Read("Detalles no disponibles.");
+        }
+    }
 }
 
 function chooseDistribution(number){
