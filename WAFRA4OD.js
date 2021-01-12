@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WAFRA4OD
 // @namespace    http://tampermonkey.net/
-// @version      0.1.5
+// @version      0.1.6
 // @description  WAFRA for Open Data (WAFRA4OD)
 // @author       Cesar Gonzalez Mora
 // @match        *://www.europeandataportal.eu/*
@@ -86,6 +86,32 @@ var readParamsES = ["titulo", "descripcion", "distribuciones", "columnas", "prim
 var goToParams = ["distributions", "description"];
 var goToParamsES = ["distribuciones", "descripción"];
 
+var NumbersWord = {
+    'one': 1,
+    'two': 2,
+    'three': 3,
+    'four': 4,
+    'five': 5,
+    'six': 6,
+    'seven': 7,
+    'eight': 8,
+    'nine': 9,
+    'ten': 10
+};
+
+var NumbersWordES = {
+    'uno': 1,
+    'dos': 2,
+    'tres': 3,
+    'cuatro': 4,
+    'cinco': 5,
+    'seis': 6,
+    'siete': 7,
+    'ocho': 8,
+    'nueve': 9,
+    'diez': 10
+};
+
 /*********************** Page is loaded ************************/
 $(document).ready(function() {
     setTimeout(function(){
@@ -141,7 +167,7 @@ function init (){
     }
 
     /*********************** Add new operations here ************************/
-    var welcome, search, addFilter, category, results, increaseFontSizeOperation, decreaseFontSizeOperation, readAloudOperation, goBackOperation, breadCrumbOperation;
+    var welcome, search, addFilter, category, results, order, details, choose, increaseFontSizeOperation, decreaseFontSizeOperation, readAloudOperation, goBackOperation, breadCrumbOperation;
     /*id; name; voiceCommand; activable; active; editable; hasMenu; mainPage; resultsPage; datasetPage;*/
     if(!spanishDomain){
         welcome = new WelcomeOperation("welcomeOperation", "Welcome", "welcome", true, true, true, false, true, true, true);
@@ -149,6 +175,9 @@ function init (){
         addFilter = new AddFilterOperation("addFilterOperation", "Add filter", "add filter", true, true, true, true, false, true, false);
         category = new CategoryOperation("categoryOperation", "Category", "category", true, true, true, true, true, true, false);
         results = new ResultsOperation("resultsOperation", "Results", "results", true, true, true, false, false, true, false);
+        order = new OrderOperation("orderOperation", "Order", "order", true, true, true, true, false, true, false);
+        details = new DetailsOperation("detailsOperation", "Details", "details", true, true, true, true, false, true, false);
+        choose = new ChooseOperation("chooseOperation", "Choose", "choose", true, true, true, true, false, true, false);
         increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperation", "Increase Font Size", "increase font size", true, true, true, false, true, true, true);
         decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperation", "Decrease Font Size", "decrease font size", true, true, true, false, true, true, true);
         readAloudOperation = new ReadAloudOperation("readAloud", "Read Aloud", "read aloud", true, true, true, true, false, false, true);
@@ -160,6 +189,9 @@ function init (){
         addFilter = new AddFilterOperation("addFilterOperationES", "Añadir filtro", "añadir filtro", true, true, true, true, false, true, false);
         category = new CategoryOperation("categoryOperationES", "Categoría", "categoría", true, true, true, true, true, true, false);
         results = new ResultsOperation("resultsOperationES", "Resultados", "resultados", true, true, true, false, false, true, false);
+        order = new OrderOperation("orderOperationES", "Ordenar", "ordenar", true, true, true, true, false, true, false);
+        details = new DetailsOperation("detailsOperationES", "Detalles", "detalles", true, true, true, true, false, true, false);
+        choose = new ChooseOperation("chooseOperationES", "Elegir", "elegir", true, true, true, true, false, true, false);
         increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperationES", "Aumentar Tamaño Letra", "aumentar tamaño letra", true, true, true, false, true, true, true);
         decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperationES", "Reducir Tamaño Letra", "reducir tamaño letra", true, true, true, false, true, true, true);
         readAloudOperation = new ReadAloudOperation("readAloudES", "Leer en voz alta", "leer", true, true, true, true, false, false, true);
@@ -393,8 +425,80 @@ class ResultsOperation extends Operation {
 
     }
 
-    startOperation(category) {
+    startOperation() {
         results();
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
+class OrderOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation(orderValue) {
+        if(typeof orderValue !== 'undefined'){
+            var parameters = orderValue.currentTarget.params;
+            orderResults(parameters);
+        } else {
+            orderResults("");
+        }
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
+class DetailsOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation(position) {
+        if(typeof position !== 'undefined'){
+            var parameters = position.currentTarget.params;
+            details(parameters);
+        } else {
+            details("");
+        }
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
+class ChooseOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation(position) {
+        if(typeof position !== 'undefined'){
+            var parameters = position.currentTarget.params;
+            choose(parameters);
+        } else {
+            choose("");
+        }
     }
 
     stopOperation() {
@@ -836,7 +940,7 @@ function createOperationsMenu(){
     /*  createReadMenu();
         createGoToMenu();*/
     //readWelcome();
-    setTimeout(function() { say(); }, 1000);
+    setTimeout(function() { document.getElementById("welcomeOperation").click(); }, 1000);
 
 
     toggleReadAloud();
@@ -2150,7 +2254,7 @@ function results(){
        && apiResultPortalResults.results !== null && apiResultPortalResults.results !== ""){
         var indexAux = 1;
         for(var i = 0; i < apiResultPortalResults.results.length; i++){
-            //TODO read title in language (if existing) and description (if possible).
+            // read title in language (if existing) and description (if possible).
             var titleAux = "";
             if(!spanishDomain){
                 titleAux = apiResultPortalResults.results[i].title.en;
@@ -2162,7 +2266,7 @@ function results(){
                 if(Object.keys(apiResultPortalResults.results[i].title).length > 0){
                     titleAux = apiResultPortalResults.results[i].title[Object.keys(apiResultPortalResults.results[i].title)[0]];
                 } else {
-                    titleAux = apiResultPortalResults.results[i].title
+                    titleAux = apiResultPortalResults.results[i].title;
                 }
             }
 
@@ -2186,6 +2290,204 @@ function results(){
         }
         else{
             Read("Los resultados son: " + readContent + ".");
+        }
+    }
+}
+
+function orderResults(orderValue){
+    // order results
+
+    var readContent = "";
+
+    if(orderValue == null || typeof orderValue == 'undefined' || orderValue == "[object MouseEvent]"){
+        orderValue = "";
+    }
+
+    if(orderValue == ""){
+        // read available ordering values
+        /*if(apiResultPortalMetadata !== null && apiResultPortalMetadata !== ""
+           && apiResultPortalMetadata.facets !== null && apiResultPortalMetadata.facets !== ""){
+            for(var j = 0; j < apiResultPortalMetadata.facets.length; j++){
+                if(apiResultPortalMetadata.facets[j].id == "sort"){
+                    for(var k = 0; k < apiResultPortalMetadata.facets[j].items.length; k++){
+                        //check for language tag
+                        if(apiResultPortalMetadata.facets[j].items[k].title.en && !spanishDomain){
+                            readContent += apiResultPortalMetadata.facets[j].items[k].title.en + "; ";
+                        } else if(apiResultPortalMetadata.facets[j].items[k].title.es && spanishDomain){
+                            readContent += apiResultPortalMetadata.facets[j].items[k].title.es + "; ";
+                        } else {
+                            readContent += apiResultPortalMetadata.facets[j].items[k].title + "; ";
+                        }
+                    }
+                }
+            }
+        }*/
+        //not provided by dcat standard
+        readContent = "relevance";
+
+        if(readContent == ""){
+            if(!spanishDomain){
+                Read("Ordering is not available now, please try again later or in other page of the portal.");
+            }
+            else{
+                Read("No se puede ordenar ahora, prueba más tarde o en otra página del portal.");
+            }
+        } else {
+            if(!spanishDomain){
+                Read("The available ordering options are: " + readContent + ". You can use the same voice command indicating the category name.");
+            }
+            else{
+                Read("Las opciones de ordenación disponibles son: " + readContent + ". Puedes utilizar el mismo comando de voz indicando el nombre de la categoría.");
+            }
+        }
+    } else {
+        // check and apply order
+        if(!spanishDomain){
+            Read("Applying the order and redirecting to the updated results page.");
+        }
+        else{
+            Read("Aplicando la ordenación de resultados y redirigiendo a la página con la lista actualizada.");
+        }
+        setTimeout(function(){
+            window.location.href = window.location.href + "&sort=" + orderValue + "%2Bdesc";
+        }, 3000);
+    }
+}
+
+function details(positionText){
+
+    var readContent = "";
+
+    if(positionText == null || typeof positionText == 'undefined' || positionText == "[object MouseEvent]"){
+        positionText = "";
+    }
+
+    if(positionText == ""){
+        // read instructions
+        if(!spanishDomain){
+            Read("Use the same command indicating the position of the dataset to read its details. In order to know the position, you can use the Results command.");
+        }
+        else{
+            Read("Usa el mismo comando indicando la posición del conjunto de datos para leer sus detalles. Para saber la posición, puedes usar el comando Resultados.");
+        }
+    } else {
+        // read details of position dataset
+        var position = text2num(positionText);
+        if(apiResultPortalResults !== null && apiResultPortalResults !== ""
+           && apiResultPortalResults.results !== null && apiResultPortalResults.results !== ""){
+            if(apiResultPortalResults.results.length > parseInt(position)){
+                // read and description title in language (if existing) and description (if possible).
+                var titleAux = "", descriptionAux = "", publisher = "", country = "";
+
+                if(!spanishDomain){
+                    titleAux = apiResultPortalResults.results[position].title.en;
+                } else {
+                    titleAux = apiResultPortalResults.results[position].title.es;
+                }
+
+                if(titleAux == "" || typeof titleAux == 'undefined'){
+                    if(Object.keys(apiResultPortalResults.results[position].title).length > 0){
+                        titleAux = apiResultPortalResults.results[position].title[Object.keys(apiResultPortalResults.results[position].title)[0]];
+                    } else {
+                        titleAux = apiResultPortalResults.results[position].title;
+                    }
+                }
+
+                if(!spanishDomain){
+                    descriptionAux = apiResultPortalResults.results[position].description.en;
+                } else {
+                    descriptionAux = apiResultPortalResults.results[position].description.es;
+                }
+
+                if(descriptionAux == "" || typeof descriptionAux == 'undefined'){
+                    if(Object.keys(apiResultPortalResults.results[position].description).length > 0){
+                        descriptionAux = apiResultPortalResults.results[position].description[Object.keys(apiResultPortalResults.results[position].description)[0]];
+                    } else {
+                        descriptionAux = apiResultPortalResults.results[position].description;
+                    }
+                }
+
+                country = apiResultPortalResults.results[position].country.title;
+                publisher = apiResultPortalResults.results[position].publisher.name;
+
+                if(titleAux != "" && typeof titleAux != 'undefined'){
+                    readContent += titleAux;
+                    if(descriptionAux != "" && typeof descriptionAux != 'undefined'){
+                        readContent += ", " + descriptionAux;
+                    }
+                    if(country != "" && typeof country != 'undefined' && publisher != "" && typeof publisher != 'undefined'){
+                        if(!spanishDomain){
+                            readContent += ", published by " + publisher + " in " + country;
+                        }
+                        else{
+                            readContent += ", publicado por " + publisher + " en " + country;
+                        }
+                    }
+                }
+            }
+        }
+
+        if(readContent == ""){
+            if(!spanishDomain){
+                Read("No dataset found, please try again with other position.");
+            }
+            else{
+                Read("No se ha encontrado el conjunto de datos, por favor pruebe de nuevo con otra posición.");
+            }
+        } else {
+            if(!spanishDomain){
+                Read(readContent + ".");
+            }
+            else{
+                Read(readContent + ".");
+            }
+        }
+    }
+}
+
+function choose(positionText){
+
+    var readContent = "";
+
+    if(positionText == null || typeof positionText == 'undefined' || positionText == "[object MouseEvent]"){
+        positionText = "";
+    }
+
+    if(positionText == ""){
+        // read instructions
+        if(!spanishDomain){
+            Read("Use the same command indicating the position of the dataset to access its page. In order to know the position, you can use the Results command.");
+        }
+        else{
+            Read("Usa el mismo comando indicando la posición del conjunto de datos para acceder a su página. Para saber la posición, puedes usar el comando Resultados.");
+        }
+    } else {
+        // access dataset
+        var position = text2num(positionText);
+        var datasetFound = false;
+        if(apiResultPortalResults !== null && apiResultPortalResults !== ""
+           && apiResultPortalResults.results !== null && apiResultPortalResults.results !== ""){
+            if(apiResultPortalResults.results.length > parseInt(position)){
+                datasetFound = true;
+                if(!spanishDomain){
+                    Read("Accessing the dataset and redirecting to its page.");
+                }
+                else{
+                    Read("Accediendo al conjunto de datos y redirigiendo su página.");
+                }
+                setTimeout(function(){
+                    window.location.href = '/data/datasets/' + apiResultPortalResults.results[position].id;
+                }, 3000);
+            }
+        }
+
+        if(!datasetFound){
+            if(!spanishDomain){
+                Read("No dataset found, please try again with other position.");
+            }
+            else{
+                Read("No se ha encontrado el conjunto de datos, por favor pruebe de nuevo con otra posición.");
+            }
         }
     }
 }
@@ -2413,7 +2715,22 @@ function downloadDistributionToInteract(){
         xhr.send();*/
 }
 
-
+function text2num(number) {
+    if(isNaN(number)){
+        var x = NumbersWord[number];
+        if(spanishDomain){
+            x = NumbersWordES[number];
+        }
+        if (x != null) {
+            return x;
+        } else {
+            console.log("Unknown number: " + number);
+            return 0;
+        }
+    } else {
+        return number;
+    }
+}
 
 function createCSSSelector (selector, style) {
   if (!document.styleSheets) return;
