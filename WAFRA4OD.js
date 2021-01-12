@@ -167,7 +167,7 @@ function init (){
     }
 
     /*********************** Add new operations here ************************/
-    var welcome, search, addFilter, category, results, order, details, choose, increaseFontSizeOperation, decreaseFontSizeOperation, readAloudOperation, goBackOperation, breadCrumbOperation;
+    var welcome, search, addFilter, category, results, order, details, choose, removeFilter, increaseFontSizeOperation, decreaseFontSizeOperation, readAloudOperation, goBackOperation, breadCrumbOperation;
     /*id; name; voiceCommand; activable; active; editable; hasMenu; mainPage; resultsPage; datasetPage;*/
     if(!spanishDomain){
         welcome = new WelcomeOperation("welcomeOperation", "Welcome", "welcome", true, true, true, false, true, true, true);
@@ -178,6 +178,7 @@ function init (){
         order = new OrderOperation("orderOperation", "Order", "order", true, true, true, true, false, true, false);
         details = new DetailsOperation("detailsOperation", "Details", "details", true, true, true, true, false, true, false);
         choose = new ChooseOperation("chooseOperation", "Choose", "choose", true, true, true, true, false, true, false);
+        removeFilter = new RemoveFilterOperation("removeFilterOperation", "Remove filter", "remove filter", true, true, true, true, false, true, false);
         increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperation", "Increase Font Size", "increase font size", true, true, true, false, true, true, true);
         decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperation", "Decrease Font Size", "decrease font size", true, true, true, false, true, true, true);
         readAloudOperation = new ReadAloudOperation("readAloud", "Read Aloud", "read aloud", true, true, true, true, false, false, true);
@@ -192,6 +193,7 @@ function init (){
         order = new OrderOperation("orderOperationES", "Ordenar", "ordenar", true, true, true, true, false, true, false);
         details = new DetailsOperation("detailsOperationES", "Detalles", "detalles", true, true, true, true, false, true, false);
         choose = new ChooseOperation("chooseOperationES", "Elegir", "elegir", true, true, true, true, false, true, false);
+        removeFilter = new RemoveFilterOperation("removeFilterOperationES", "Quitar filtro", "quitar filtro", true, true, true, true, false, true, false);
         increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperationES", "Aumentar Tamaño Letra", "aumentar tamaño letra", true, true, true, false, true, true, true);
         decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperationES", "Reducir Tamaño Letra", "reducir tamaño letra", true, true, true, false, true, true, true);
         readAloudOperation = new ReadAloudOperation("readAloudES", "Leer en voz alta", "leer", true, true, true, true, false, false, true);
@@ -498,6 +500,30 @@ class ChooseOperation extends Operation {
             choose(parameters);
         } else {
             choose("");
+        }
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
+class RemoveFilterOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation(filter) {
+        if(typeof filter !== 'undefined'){
+            var parameters = filter.currentTarget.params;
+            removeFilter(parameters);
+        } else {
+            removeFilter("");
         }
     }
 
@@ -2490,6 +2516,95 @@ function choose(positionText){
             }
         }
     }
+}
+
+function removeFilter(filter){
+
+    var readContent = "";
+
+    if(filter == null || typeof filter == 'undefined' || filter == "[object MouseEvent]"){
+        filter = "";
+    }
+
+    var params = window.location.search;
+    var urlParams = new URLSearchParams(params);
+    if(filter == ""){
+        // read aloud available filters
+        var querySearch = urlParams.get('query');
+        if(querySearch != null){
+            readContent += "search, ";
+        }
+
+        var sort = urlParams.get('sort');
+        if(sort != null){
+            readContent = "sort, ";
+        }
+
+        if(apiResultPortalMetadata !== null && apiResultPortalMetadata !== ""
+           && apiResultPortalMetadata.facets !== null && apiResultPortalMetadata.facets !== ""){
+            for(var i = 0; i < apiResultPortalMetadata.facets.length; i++){
+                if(urlParams.getAll(apiResultPortalMetadata.facets[i].id).length > 0){
+                    readContent += apiResultPortalMetadata.facets[i].id + ", ";
+                }
+            }
+        }
+
+        if(readContent == ""){
+            if(!spanishDomain){
+                Read("No filters are available now, please try again later or in other page of the portal.");
+            }
+            else{
+                Read("Ahora no hay filtros disponibles, prueba más tarde o en otra página del portal.");
+            }
+        } else {
+            if(!spanishDomain){
+                Read("The applied filters that can be removed are: " + readContent + ". You can use the same voice command indicating the filter and its value.");
+            }
+            else{
+                Read("Los filtros aplicados que se pueden quitar son: " + readContent + ". Puedes utilizar el mismo comando de voz indicando el filtro que deseas y su valor.");
+            }
+        }
+
+    } else {
+        //remove specific filter if existing
+        var filterInUrl = urlParams.get(filter);
+        var filterExists = false;
+        if(filterInUrl != null){
+            filterExists = true;
+        }
+
+        if(filterExists){
+            urlParams.delete(filter);
+            if(!spanishDomain){
+                Read("Removing the filter and redirecting to the updated results page.");
+            }
+            else{
+                Read("Quitando el filtro y redirigiendo a la página con la lista actualizada.");
+            }
+            setTimeout(function(){
+                //window.location.href = window.location.href + urlParams.toString();
+                window.location.search = urlParams.toString();
+            }, 3000);
+        } else {
+            if(filterExists){
+                if(!spanishDomain){
+                    Read("The filter value does not exist, please try other value.");
+                }
+                else{
+                    Read("El valor a filtrar no es válido, por favor pruebe otro valor.");
+                }
+            } else {
+                if(!spanishDomain){
+                    Read("The filter does not exist, please try other filter.");
+                }
+                else{
+                    Read("El filtro no existe, por favor pruebe otro filtro.");
+                }
+            }
+        }
+
+    }
+
 }
 
 function getTitleText(){
