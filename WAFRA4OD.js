@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WAFRA4OD
 // @namespace    http://tampermonkey.net/
-// @version      0.1.7
+// @version      0.1.8
 // @description  WAFRA for Open Data (WAFRA4OD)
 // @author       Cesar Gonzalez Mora
 // @match        *://www.europeandataportal.eu/*
@@ -111,7 +111,7 @@ var NumbersWordES = {
 };
 
 var navigationShortcutsActive = false;
-var columnPos, rowPos;
+var columnPos = 0, rowPos = 1;
 
 /*********************** Page is loaded ************************/
 $(document).ready(function() {
@@ -137,6 +137,9 @@ $(document).ready(function() {
         };
         observer.observe(bodyList, config);
     };
+
+    document.onkeydown = KeyPress;
+
 });
 
 function init (){
@@ -240,8 +243,6 @@ function init (){
     wafra.createWebAugmentedMenu();
     wafra.createOperationsMenu();
     wafra.createCommandsMenu();
-    document.onkeydown = KeyPress;
-
     //TODO: personalise welcome
     /*setTimeout(function(){
         getDistributions();
@@ -389,8 +390,12 @@ class SearchOperation extends Operation {
     }
 
     startOperation(term) {
-        var parameters = term.currentTarget.params;
-        search(parameters);
+        if(typeof term !== 'undefined'){
+            var parameters = term.currentTarget.params;
+            search(parameters);
+        } else {
+            search("");
+        }
     }
 
     stopOperation() {
@@ -653,8 +658,12 @@ class ReadDataOperation extends Operation {
     }
 
     startOperation(params) {
-        var parameters = params.currentTarget.params;
-        readAloud(parameters);
+        if(typeof params !== 'undefined'){
+            var parameters = params.currentTarget.params;
+            readAloud(parameters);
+        } else {
+            readAloud("");
+        }
     }
 
     stopOperation() {
@@ -3047,14 +3056,14 @@ function readAloud(params){
                 readRows();
                 return;
                 break;
-            case params.startsWith('row') ? params : '' :
-            case params.startsWith('fila') ? params : '' :
-                readRowsFrom(params);
-                return;
-                break;
             case params.startsWith('rows from') ? params : '' :
             case params.startsWith('filas desde') ? params : '' :
                 readRowsFrom(params);
+                return;
+                break;
+            case params.startsWith('row') ? params : '' :
+            case params.startsWith('fila') ? params : '' :
+                readRow(params);
                 return;
                 break;
             default:
@@ -3072,34 +3081,34 @@ function readCell(){
     var limitRow = false, limitColumn = false;
     var columnText = "", cellValue = "";
 
-    if(distributionData.length > columnPos && columnPos > 0){
-        if(distributionData[columnPos].length > rowPos && rowPos > 0){
-            columnText = distributionData[0][rowPos];
-            cellValue = distributionData[columnPos][rowPos];
+    if(distributionData.length > rowPos && rowPos >= 1){
+        if(distributionData[rowPos].length > columnPos && columnPos >= 0){
+            columnText = distributionData[0][columnPos];
+            cellValue = distributionData[rowPos][columnPos];
         } else {
-            limitRow = true;
-            if(rowPos >= distributionData[columnPos].length){
-                rowPos -= 1;
+            limitColumn = true;
+            if(columnPos >= distributionData[rowPos].length){
+                columnPos -= 1;
             } else if (rowPos < 0){
-                rowPos += 1;
+                columnPos += 1;
             }
         }
     } else {
-        limitColumn = true;
-        if(columnPos >= distributionData.length){
-            columnPos -= 1;
-        } else if (columnPos < 0){
-            columnPos += 1;
+        limitRow = true;
+        if(rowPos >= distributionData.length){
+            rowPos -= 1;
+        } else if (rowPos <= 0){
+            rowPos += 1;
         }
     }
 
     var columnPosAux = columnPos + 1;
-    var rowPosAux = rowPos + 1;
+    var rowPosAux = rowPos;
     if(!limitColumn && !limitRow){
         if(!spanishDomain){
-            Read("Column " + columnPosAux + " Row " + rowPosAux + ": " + columnText + ", " + cellValue + ".");
+            Read(" Row " + rowPosAux + " Column " + columnPosAux + ": " + columnText + ", " + cellValue + ".");
         } else {
-            Read("Columna " + columnPosAux + " Fila " + rowPosAux + ": " + columnText + ", " + cellValue + ".");
+            Read(" Fila " + rowPosAux + " Columna " + columnPosAux + ": " + columnText + ", " + cellValue + ".");
         }
     } else if(limitColumn){
         if(!spanishDomain){
@@ -3118,49 +3127,55 @@ function readCell(){
 }
 
 function readRows(){
+    var readContent = "";
+    //TODO: activate shortcut to stop and read instructions
 
     var columnText = "", cellValue = "";
-    for(var i = 0; i < distributionData.length; i++){
+    for(var i = 1; i < distributionData.length; i++){
         for(var j = 0; j < distributionData[i].length; j++){
-            var columnPosAux = i + 1;
-            var rowPosAux = j + 1;
+            var rowPosAux = i;
+            var columnPosAux = j + 1;
             columnText = distributionData[0][j];
             cellValue = distributionData[i][j];
             //Move rowPos and columnPos?
             if(!spanishDomain){
-                Read("Column " + columnPosAux + " Row " + rowPosAux + ": " + columnText + ", " + cellValue + ".");
+                readContent += " Row " + rowPosAux + " Column " + columnPosAux + ": " + columnText + ", " + cellValue + ".";
             } else {
-                Read("Columna " + columnPosAux + " Fila " + rowPosAux + ": " + columnText + ", " + cellValue + ".");
+                readContent += " Fila " + rowPosAux + " Columna " + columnPosAux + ": " + columnText + ", " + cellValue + ".";
             }
         }
     }
+    Read(readContent);
     //TODO: check border in row 100 and download 100 more rows
 }
 
 function readRow(params){
+    var readContent = "";
     var error = false;
     var position = 0;
     if(params.includes(" ")){
         // check if existing, if not read error
         if(params.split(" ").length > 0){
-            position = text2num(params.split(" ")[1]);
+            var paramNumber = params.split(" ")[1];
+            position = text2num(paramNumber);
         } else {
             error = true;
         }
     }
+    console.log(position);
 
     var columnText = "", cellValue = "";
     if(position < distributionData.length){
         for(var j = 0; j < distributionData[position].length; j++){
-            var columnPosAux = position + 1;
-            var rowPosAux = j + 1;
+            var rowPosAux = position;
+            var columnPosAux = j + 1;
             columnText = distributionData[0][j];
             cellValue = distributionData[position][j];
             //Move rowPos and columnPos?
             if(!spanishDomain){
-                Read("Column " + columnPosAux + " Row " + rowPosAux + ": " + columnText + ", " + cellValue + ".");
+                readContent += " Row " + rowPosAux + " Column " + columnPosAux + ": " + columnText + ", " + cellValue + ".";
             } else {
-                Read("Columna " + columnPosAux + " Fila " + rowPosAux + ": " + columnText + ", " + cellValue + ".");
+                readContent += " Fila " + rowPosAux + " Columna " + columnPosAux + ": " + columnText + ", " + cellValue + ".";
             }
         }
     } else {
@@ -3173,11 +3188,14 @@ function readRow(params){
         } else {
             Read("La fila indicada no existe, inténtalo de nuevo.");
         }
+    } else {
+        Read(readContent);
     }
     //TODO: check border in row 100 and download 100 more rows
 }
 
 function readRowsFrom(params){
+    var readContent = "";
     var error = false;
     var positionStart = 0, positionEnd = 0;
     if(params.includes(" ")){
@@ -3192,22 +3210,26 @@ function readRowsFrom(params){
 
     var columnText = "", cellValue = "";
     //TODO: read rows from n to m
-    /*if(position < distributionData.length){
-        for(var j = 0; j < distributionData[position].length; j++){
-            var columnPosAux = position + 1;
-            var rowPosAux = j + 1;
-            columnText = distributionData[0][j];
-            cellValue = distributionData[position][j];
-            //Move rowPos and columnPos?
-            if(!spanishDomain){
-                Read("Column " + columnPosAux + " Row " + rowPosAux + ": " + columnText + ", " + cellValue + ".");
-            } else {
-                Read("Columna " + columnPosAux + " Fila " + rowPosAux + ": " + columnText + ", " + cellValue + ".");
+    if(positionStart >= 0 && positionEnd < distributionData.length){
+        for(var i = 0; i < distributionData.length; i++){
+            if(i >= positionStart && i <= positionEnd){
+                for(var j = 0; j < distributionData[i].length; j++){
+                    var rowPosAux = i;
+                    var columnPosAux = j + 1;
+                    columnText = distributionData[0][j];
+                    cellValue = distributionData[i][j];
+                    //Move rowPos and columnPos?
+                    if(!spanishDomain){
+                         readContent += " Row " + rowPosAux + " Column " + columnPosAux + ": " + columnText + ", " + cellValue + ".";
+                    } else {
+                        readContent += " Fila " + rowPosAux + " Columna " + columnPosAux + ": " + columnText + ", " + cellValue + ".";
+                    }
+                }
             }
         }
     } else {
         error = true;
-    }*/
+    }
     //TODO: check border in row 100 and download 100 more rows
 
     if(error){
@@ -3216,6 +3238,8 @@ function readRowsFrom(params){
         } else {
             Read("Las filas indicadas no existen, inténtalo de nuevo.");
         }
+    } else {
+        Read(readContent);
     }
 }
 
