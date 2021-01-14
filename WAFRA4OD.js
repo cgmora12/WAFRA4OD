@@ -81,10 +81,8 @@ var newCommandString = "";
 var operationToChange;
 var distributionChoosenURL = "", distributionChoosenTitle = "";
 
-var readParams = ["title", "description", "distributions", "columns", "first row"];
-var readParamsES = ["titulo", "descripcion", "distribuciones", "columnas", "primera fila"];
-var goToParams = ["distributions", "description"];
-var goToParamsES = ["distribuciones", "descripción"];
+var readParams = ["title", "description", "distributions", "columns", "all", "rows", "row", "rows from"];
+var readParamsES = ["titulo", "descripcion", "distribuciones", "columnas", "todo", "filas", "fila", "filas desde"];
 
 var NumbersWord = {
     'one': 1,
@@ -111,6 +109,9 @@ var NumbersWordES = {
     'nueve': 9,
     'diez': 10
 };
+
+var navigationShortcutsActive = false;
+var columnPos, rowPos;
 
 /*********************** Page is loaded ************************/
 $(document).ready(function() {
@@ -187,7 +188,7 @@ function init (){
 
     /*********************** Add new operations here ************************/
     var welcome, search, addFilter, category, results, order, details, choose, removeFilter, readTitle, readDescription, readDistributions, readDetails,
-        increaseFontSizeOperation, decreaseFontSizeOperation, readAloudOperation, goBackOperation, breadCrumbOperation;
+        readDataOperation, increaseFontSizeOperation, decreaseFontSizeOperation, goBackOperation, breadCrumbOperation;
     /*id; name; voiceCommand; activable; active; editable; hasMenu; mainPage; resultsPage; datasetPage;*/
     if(!spanishDomain){
         welcome = new WelcomeOperation("welcomeOperation", "Welcome", "welcome", true, true, true, false, true, true, true);
@@ -203,9 +204,9 @@ function init (){
         readDescription = new ReadDescriptionOperation("readDescription", "Read description", "read description", true, true, true, false, false, false, true);
         readDistributions = new ReadDistributionsOperation("readDistributions", "Read distributions", "read distributions", true, true, true, false, false, false, true);
         readDetails = new ReadDetailsOperation("readDetails", "Read details", "read details", true, true, true, false, false, false, true);
+        readDataOperation = new ReadDataOperation("readData", "Read data", "read", true, true, true, true, false, false, true);
         increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperation", "Increase Font Size", "increase font size", true, true, true, false, true, true, true);
         decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperation", "Decrease Font Size", "decrease font size", true, true, true, false, true, true, true);
-        readAloudOperation = new ReadAloudOperation("readAloud", "Read Aloud", "read aloud", true, true, true, true, false, false, true);
         goBackOperation = new GoBackOperation("goBack", "Go Back", "go back", true, true, true, false, false, true, true);
         breadCrumbOperation = new BreadcrumbOperation("breadcrumb", "Breadcrumb", "", true, true, true, false);
     } else {
@@ -222,9 +223,9 @@ function init (){
         readDescription = new ReadDescriptionOperation("readDescriptionES", "Leer descripción", "leer descripción", true, true, true, false, false, false, true);
         readDistributions = new ReadDistributionsOperation("readDistributionsES", "Leer distribuciones", "leer distribuciones", true, true, true, false, false, false, true);
         readDetails = new ReadDetailsOperation("readDetailsES", "Leer detalles", "leer detalles", true, true, true, false, false, false, true);
+        readDataOperation = new ReadDataOperation("readDataES", "Leer datos", "leer", true, true, true, true, false, false, true);
         increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperationES", "Aumentar Tamaño Letra", "aumentar tamaño letra", true, true, true, false, true, true, true);
         decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperationES", "Reducir Tamaño Letra", "reducir tamaño letra", true, true, true, false, true, true, true);
-        readAloudOperation = new ReadAloudOperation("readAloudES", "Leer en voz alta", "leer", true, true, true, true, false, false, true);
         goBackOperation = new GoBackOperation("goBackES", "Volver", "volver", true, true, true, false, false, true, true);
         breadCrumbOperation = new BreadcrumbOperation("breadcrumbES", "Panel navegación", "", true, true, true, false, true, true, true);
     }
@@ -636,6 +637,31 @@ class ReadDetailsOperation extends Operation {
     }
 }
 
+class ReadDataOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation() {
+        createSubmenuForOperationRead("menu-" + this.id, this);
+    }
+
+    openMenu() {
+        closeOperationsMenu();
+        showSubmenu("menu-" + this.id);
+    }
+
+    startOperation(params) {
+        var parameters = params.currentTarget.params;
+        readAloud(parameters);
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
 class IncreaseFontSizeOperation extends Operation {
     constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
         super();
@@ -670,7 +696,6 @@ class IncreaseFontSizeOperation extends Operation {
     }
 }
 
-
 class DecreaseFontSizeOperation extends Operation {
     constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
         super();
@@ -703,88 +728,6 @@ class DecreaseFontSizeOperation extends Operation {
     stopOperation() {
         console.log("Stop operation");
     }
-}
-
-class ReadAloudOperation extends Operation {
-    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
-        super();
-        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
-    }
-
-    configureOperation() {
-        createSubmenuForOperationRead("menu-" + this.id, this);
-    }
-
-    openMenu() {
-        closeOperationsMenu();
-        showSubmenu("menu-" + this.id);
-    }
-
-    startOperation(params) {
-        var parameters = params.currentTarget.params;
-        readAloud(parameters);
-    }
-
-    stopOperation() {
-        console.log("Stop operation");
-    }
-}
-
-function readAloud(params){
-
-    console.log("read: " + params);
-    //closeGoToMenu();
-    closeMenu();
-    closeOperationsMenu();
-
-    var readContent = "";
-
-    //TODO: add all commands
-    switch(params){
-        case "title":
-        case "titulo":
-            getTitleText();
-            break;
-        case "description":
-        case "descripcion":
-            getDescriptionText();
-            break;
-        case "columns":
-        case "columnas":
-            getColumnsText();
-            return;
-            break;
-        case "distributions":
-        case "distribuciones":
-            getDistributionsText();
-            break;
-        case "download":
-        case "descargar":
-            downloadDistribution();
-            break;
-    }
-
-    /*if(!spanishDomain){
-        readContent += "Section " + sectionNameToRead + ". " ;
-    } else {
-        readContent += "Sección " + sectionNameToRead + ". " ;
-    }
-    if(readFirstTime){
-        readFirstTime = false;
-        if(!spanishDomain){
-            readContent += "You can use control + space to stop the reading aloud operation. ";
-        } else {
-            readContent += "Puedes utilizar control + espacio para detener la lectura en voz alta. ";
-        }
-    }
-    for(var z = 0; z < items[j].value.length; z++){
-        var element = getElementByXPath(items[j].value[z]);
-        var domParser = new DOMParser().parseFromString(element.outerHTML, 'text/html');
-        readContent += domParser.body.innerText;
-        console.log("domParser: " + JSON.stringify(domParser));
-        console.log("content: " + readContent);
-    }*/
-    //Read(readContent);
 }
 
 // Go back
@@ -1441,6 +1384,7 @@ function stopReading(){
     }, 1000);
 }
 
+// Shortcuts
 function KeyPress(e) {
     var evtobj = window.event? event : e
 
@@ -1500,6 +1444,26 @@ function KeyPress(e) {
         }
 
         myStorage.setItem("recognitionActive", recognitionActive);
+    }
+
+    if(navigationShortcutsActive){
+        if(evtobj.ctrlKey && evtobj.keyCode == 37){
+            //Left
+            columnPos -= 1;
+            readCell();
+        } else if(evtobj.ctrlKey && evtobj.keyCode == 38){
+            //Up
+            rowPos -= 1;
+            readCell();
+        } else if(evtobj.ctrlKey && evtobj.keyCode == 39){
+            //Right
+            columnPos += 1;
+            readCell();
+        } else if(evtobj.ctrlKey && evtobj.keyCode == 40){
+            //Down
+            rowPos += 1;
+            readCell();
+        }
     }
 }
 
@@ -1798,10 +1762,6 @@ function updateGrammar(){
         for(var i2 = 0; i2 < readParams.length; i2++){
             commandsAux.push(readParams[i2]);
         }
-
-        for(var i3 = 0; i3 < goToParams.length; i3++){
-            commandsAux.push(goToParams[i3]);
-        }
     } else {
         commandsGrammar = [ 'aumentar', 'incrementar', 'leer', 'play', 'letra', 'tamaño', 'decrementar', 'reducir', 'detener', 'activar', 'desactivar', 'más', 'rápido', 'despacio' ];
         commandsAux = [];
@@ -1818,10 +1778,6 @@ function updateGrammar(){
 
         for(var j2 = 0; j2 < readParams.length; j2++){
             commandsAux.push(readParams[j2]);
-        }
-
-        for(var j3 = 0; j3 < goToParams.length; j3++){
-            commandsAux.push(goToParams[j3]);
         }
     }
 
@@ -2785,25 +2741,6 @@ function getDescriptionText(){
     }
 }
 
-function downloadDistribution(){
-    console.log("downloadDistribution");
-    var link = document.createElement("a");
-    console.log("distributionChoosenTitle: " + distributionChoosenTitle);
-    link.download = distributionChoosenTitle;
-    console.log("distributionChoosenURL: " + distributionChoosenURL);
-    link.href = distributionChoosenURL;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    delete link;
-
-    if(!spanishDomain){
-        Read("Distribution downloading to your computer.");
-    } else {
-        Read("Distribución descargándose a su ordenador.");
-    }
-}
-
 function getDistributionsText(){
     console.log("getDistributionsText");
     //var distributionItems = document.getElementsByClassName("distributions__item");
@@ -3013,8 +2950,6 @@ function getColumnsText(){
 }
 
 //TODO: get rows functions
-
-
 function downloadDistributionToInteract(){
     var columns = "";
     var counter = 0;
@@ -3076,6 +3011,242 @@ function downloadDistributionToInteract(){
             }
         }
         xhr.send();*/
+}
+
+function readAloud(params){
+    //TODO: check if working
+
+    console.log("read: " + params);
+    //closeGoToMenu();
+    closeMenu();
+    closeOperationsMenu();
+
+    if(params == "" || params == null || typeof params == 'undefined'){
+    //TODO: if no params, read instructions (available params)
+        if(!spanishDomain){
+            Read("Please use the read command with one of the following options: columns, all, rows, row number, rows from number to number.");
+        } else {
+            Read("Por favor usa el comando leer con una de las siguientes opciones: columnas, todo, filas, fila número, filas desde número a número.");
+        }
+    } else {
+        var readContent = "";
+        // if params, read what params says from dataset
+        switch(params){
+            case "columns":
+            case "columnas":
+                getColumnsText();
+                return;
+                break;
+            case "all":
+            case "todo":
+                activateKeyboardShortcuts();
+                return;
+                break;
+            case "rows":
+            case "filas":
+                readRows();
+                return;
+                break;
+            case params.startsWith('row') ? params : '' :
+            case params.startsWith('fila') ? params : '' :
+                readRowsFrom(params);
+                return;
+                break;
+            case params.startsWith('rows from') ? params : '' :
+            case params.startsWith('filas desde') ? params : '' :
+                readRowsFrom(params);
+                return;
+                break;
+            default:
+                if(!spanishDomain){
+                    Read("Read " + params + "is not possible, please try again with another option. To get available options use the command Read.");
+                } else {
+                    Read("No es posible leer " + params + "por favor prueba con otra opción. Para saber las opciones disponibles usa el comando Leer.");
+                }
+                break;
+        }
+    }
+}
+
+function readCell(){
+    var limitRow = false, limitColumn = false;
+    var columnText = "", cellValue = "";
+
+    if(distributionData.length > columnPos && columnPos > 0){
+        if(distributionData[columnPos].length > rowPos && rowPos > 0){
+            columnText = distributionData[0][rowPos];
+            cellValue = distributionData[columnPos][rowPos];
+        } else {
+            limitRow = true;
+            if(rowPos >= distributionData[columnPos].length){
+                rowPos -= 1;
+            } else if (rowPos < 0){
+                rowPos += 1;
+            }
+        }
+    } else {
+        limitColumn = true;
+        if(columnPos >= distributionData.length){
+            columnPos -= 1;
+        } else if (columnPos < 0){
+            columnPos += 1;
+        }
+    }
+
+    var columnPosAux = columnPos + 1;
+    var rowPosAux = rowPos + 1;
+    if(!limitColumn && !limitRow){
+        if(!spanishDomain){
+            Read("Column " + columnPosAux + " Row " + rowPosAux + ": " + columnText + ", " + cellValue + ".");
+        } else {
+            Read("Columna " + columnPosAux + " Fila " + rowPosAux + ": " + columnText + ", " + cellValue + ".");
+        }
+    } else if(limitColumn){
+        if(!spanishDomain){
+            Read("The edge has been reached in column " + columnPosAux + ".");
+        } else {
+            Read("Se ha alcanzado el borde en la columna " + columnPosAux + ".");
+        }
+    } else if(limitRow){
+        if(!spanishDomain){
+            Read("The edge has been reached in row " + rowPosAux + ".");
+        } else {
+            Read("Se ha alcanzado el borde en la fila " + rowPosAux + ".");
+        }
+    }
+    //TODO: check border in row 100 and download 100 more rows
+}
+
+function readRows(){
+
+    var columnText = "", cellValue = "";
+    for(var i = 0; i < distributionData.length; i++){
+        for(var j = 0; j < distributionData[i].length; j++){
+            var columnPosAux = i + 1;
+            var rowPosAux = j + 1;
+            columnText = distributionData[0][j];
+            cellValue = distributionData[i][j];
+            //Move rowPos and columnPos?
+            if(!spanishDomain){
+                Read("Column " + columnPosAux + " Row " + rowPosAux + ": " + columnText + ", " + cellValue + ".");
+            } else {
+                Read("Columna " + columnPosAux + " Fila " + rowPosAux + ": " + columnText + ", " + cellValue + ".");
+            }
+        }
+    }
+    //TODO: check border in row 100 and download 100 more rows
+}
+
+function readRow(params){
+    var error = false;
+    var position = 0;
+    if(params.includes(" ")){
+        // check if existing, if not read error
+        if(params.split(" ").length > 0){
+            position = text2num(params.split(" ")[1]);
+        } else {
+            error = true;
+        }
+    }
+
+    var columnText = "", cellValue = "";
+    if(position < distributionData.length){
+        for(var j = 0; j < distributionData[position].length; j++){
+            var columnPosAux = position + 1;
+            var rowPosAux = j + 1;
+            columnText = distributionData[0][j];
+            cellValue = distributionData[position][j];
+            //Move rowPos and columnPos?
+            if(!spanishDomain){
+                Read("Column " + columnPosAux + " Row " + rowPosAux + ": " + columnText + ", " + cellValue + ".");
+            } else {
+                Read("Columna " + columnPosAux + " Fila " + rowPosAux + ": " + columnText + ", " + cellValue + ".");
+            }
+        }
+    } else {
+        error = true;
+    }
+
+    if(error){
+        if(!spanishDomain){
+            Read("Indicated row does not exist, please try again.");
+        } else {
+            Read("La fila indicada no existe, inténtalo de nuevo.");
+        }
+    }
+    //TODO: check border in row 100 and download 100 more rows
+}
+
+function readRowsFrom(params){
+    var error = false;
+    var positionStart = 0, positionEnd = 0;
+    if(params.includes(" ")){
+        // check if existing, if not read error
+        if(params.split(" ").length > 0){
+            positionStart = text2num(params.split(" ")[2]);
+            positionEnd = text2num(params.split(" ")[4]);
+        } else {
+            error = true;
+        }
+    }
+
+    var columnText = "", cellValue = "";
+    //TODO: read rows from n to m
+    /*if(position < distributionData.length){
+        for(var j = 0; j < distributionData[position].length; j++){
+            var columnPosAux = position + 1;
+            var rowPosAux = j + 1;
+            columnText = distributionData[0][j];
+            cellValue = distributionData[position][j];
+            //Move rowPos and columnPos?
+            if(!spanishDomain){
+                Read("Column " + columnPosAux + " Row " + rowPosAux + ": " + columnText + ", " + cellValue + ".");
+            } else {
+                Read("Columna " + columnPosAux + " Fila " + rowPosAux + ": " + columnText + ", " + cellValue + ".");
+            }
+        }
+    } else {
+        error = true;
+    }*/
+    //TODO: check border in row 100 and download 100 more rows
+
+    if(error){
+        if(!spanishDomain){
+            Read("Indicated rows do not exist, please try again.");
+        } else {
+            Read("Las filas indicadas no existen, inténtalo de nuevo.");
+        }
+    }
+}
+
+function activateKeyboardShortcuts(){
+    columnPos = 0;
+    rowPos = 0;
+    navigationShortcutsActive = true;
+    if(!spanishDomain){
+        Read("Now you can use control + keyboard arrows to navigate within the data. For example, use control and down arrow to read the cell below, or use control and right arrow to read the next cell in the row.");
+    } else {
+        Read("Ahora puedes utilizar el atajo control más las flechas para navegar entre los datos. Por ejemplo, usa control y flecha abajo para leer la celda inferior, o usa control y flecha derecha para leer la celda siguiente en la fila.");
+    }
+}
+
+function downloadDistribution(){
+    console.log("downloadDistribution");
+    var link = document.createElement("a");
+    console.log("distributionChoosenTitle: " + distributionChoosenTitle);
+    link.download = distributionChoosenTitle;
+    console.log("distributionChoosenURL: " + distributionChoosenURL);
+    link.href = distributionChoosenURL;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    delete link;
+
+    if(!spanishDomain){
+        Read("Distribution downloading to your computer.");
+    } else {
+        Read("Distribución descargándose a su ordenador.");
+    }
 }
 
 function text2num(number) {
