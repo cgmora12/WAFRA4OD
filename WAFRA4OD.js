@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WAFRA4OD
 // @namespace    http://tampermonkey.net/
-// @version      0.1.8
+// @version      0.1.9
 // @description  WAFRA for Open Data (WAFRA4OD)
 // @author       Cesar Gonzalez Mora
 // @match        *://www.europeandataportal.eu/*
@@ -175,6 +175,7 @@ function init (){
         console.log("spanish domain");
     }
 
+    //TODO: open data portals compatibility
     if(document.URL.startsWith("https://www.europeandataportal.eu/data/datasets/")){
         datasetPage = true;
         var apiURLdataset = document.URL.replace("https://www.europeandataportal.eu/data/datasets/", "https://www.europeandataportal.eu/data/search/datasets/");
@@ -191,7 +192,8 @@ function init (){
 
     /*********************** Add new operations here ************************/
     var welcome, search, addFilter, category, results, order, details, choose, removeFilter, readTitle, readDescription, readDistributions, readDetails,
-        readDataOperation, increaseFontSizeOperation, decreaseFontSizeOperation, goBackOperation, breadCrumbOperation;
+        readDataOperation, increaseFontSizeOperation, decreaseFontSizeOperation, faster, slower, chooseDistribution, download,
+        mainPageOperation, goBackOperation, breadCrumbOperation;
     /*id; name; voiceCommand; activable; active; editable; hasMenu; mainPage; resultsPage; datasetPage;*/
     if(!spanishDomain){
         welcome = new WelcomeOperation("welcomeOperation", "Welcome", "welcome", true, true, true, false, true, true, true);
@@ -210,6 +212,11 @@ function init (){
         readDataOperation = new ReadDataOperation("readData", "Read data", "read", true, true, true, true, false, false, true);
         increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperation", "Increase Font Size", "increase font size", true, true, true, false, true, true, true);
         decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperation", "Decrease Font Size", "decrease font size", true, true, true, false, true, true, true);
+        faster = new FasterOperation("faster", "Read faster", "faster", true, true, true, false, true, true, true);
+        slower = new SlowerOperation("slower", "Read slower", "slower", true, true, true, false, true, true, true);
+        chooseDistribution = new ChooseDistributionOperation("chooseDistribution", "Choose distribution", "choose distribution", true, true, true, true, false, false, true);
+        download = new DownloadOperation("download", "Download", "download", true, true, true, false, false, false, true);
+        mainPageOperation = new GoMainPageOperation("mainPage", "Go to main page", "main page", true, true, true, false, false, true, true);
         goBackOperation = new GoBackOperation("goBack", "Go Back", "go back", true, true, true, false, false, true, true);
         breadCrumbOperation = new BreadcrumbOperation("breadcrumb", "Breadcrumb", "", true, true, true, false);
     } else {
@@ -229,6 +236,11 @@ function init (){
         readDataOperation = new ReadDataOperation("readDataES", "Leer datos", "leer", true, true, true, true, false, false, true);
         increaseFontSizeOperation = new IncreaseFontSizeOperation("increaseFontSizeOperationES", "Aumentar Tamaño Letra", "aumentar tamaño letra", true, true, true, false, true, true, true);
         decreaseFontSizeOperation = new DecreaseFontSizeOperation("decreaseFontSizeOperationES", "Reducir Tamaño Letra", "reducir tamaño letra", true, true, true, false, true, true, true);
+        faster = new FasterOperation("fasterES", "Leer más rápido", "más rápido", true, true, true, false, true, true, true);
+        slower = new SlowerOperation("slowerES", "Leer más lento", "más despacio", true, true, true, false, true, true, true);
+        chooseDistribution = new ChooseDistributionOperation("chooseDistributionES", "Elegir distribución", "elegir distribución", true, true, true, true, false, false, true);
+        download = new DownloadOperation("downloadES", "Descargar", "descargar", true, true, true, false, false, false, true);
+        mainPageOperation = new GoMainPageOperation("mainPageES", "Ir a la página principal", "página principal", true, true, true, false, false, true, true);
         goBackOperation = new GoBackOperation("goBackES", "Volver", "volver", true, true, true, false, false, true, true);
         breadCrumbOperation = new BreadcrumbOperation("breadcrumbES", "Panel navegación", "", true, true, true, false, true, true, true);
     }
@@ -243,10 +255,6 @@ function init (){
     wafra.createWebAugmentedMenu();
     wafra.createOperationsMenu();
     wafra.createCommandsMenu();
-    //TODO: personalise welcome
-    /*setTimeout(function(){
-        getDistributions();
-    }, 1000);*/
 
 }
 
@@ -739,7 +747,104 @@ class DecreaseFontSizeOperation extends Operation {
     }
 }
 
-// Go back
+class FasterOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation() {
+        readFaster();
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
+class SlowerOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation() {
+        readSlower();
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
+class ChooseDistributionOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation(params) {
+        if(typeof params !== 'undefined'){
+            var parameters = params.currentTarget.params;
+            chooseDistribution(parameters);
+        } else {
+            chooseDistribution("");
+        }
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
+class DownloadOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation(){
+
+    }
+
+    startOperation() {
+        downloadDistribution();
+    }
+
+    stopOperation() {
+        console.log("Stop operation");
+    }
+}
+
+class GoMainPageOperation extends Operation {
+    constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
+        super();
+        this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
+    }
+
+    configureOperation() {
+    }
+
+    startOperation() {
+        goToMainPage();
+    }
+
+    stopOperation() {
+    }
+}
+
 class GoBackOperation extends Operation {
     constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
         super();
@@ -754,20 +859,6 @@ class GoBackOperation extends Operation {
     }
 
     stopOperation() {
-    }
-}
-
-// Go back
-function goBack(){
-    var breadcrumbChildren = document.getElementById("BreadCrumb").children;
-    if(breadcrumbChildren.length > 1){
-        breadcrumbChildren[breadcrumbChildren.length-2].firstElementChild.click();
-    } else {
-        if(!spanishDomain){
-            Read("There is no previous page in the history from same web domain");
-        } else {
-            Read("No hay una página anterior en el historial que pertenezca al mismo dominio");
-        }
     }
 }
 
@@ -1052,10 +1143,7 @@ function readWelcome(){
                 readContent += operations[i].voiceCommand + ", ";
             }
         }
-        //TODO: remove when operations are created
-        readContent += stopListeningCommand + ", " + chooseDistributionCommand + ", " + changeCommand + ", "
-            + activateCommand + ", " + deactivateCommand + ", " + readFasterCommand + ", " + readSlowerCommand + ". ";
-        //readContent += "The sections to read aloud are: " + readParams.toString() + ". And the sections to go directly are: " + goToParams.toString() + ".";
+        readContent += stopListeningCommand + ", " + changeCommand + ", " + activateCommand + ", " + deactivateCommand + ". ";
     } else {
         readContent = "¡Bienvenido a " + document.title + "! Los comandos de voz disponibles son: ";
         for(var j = 0; j < operations.length; j++){
@@ -1067,10 +1155,7 @@ function readWelcome(){
                 readContent += operations[j].voiceCommand + ", ";
             }
         }
-        //TODO: remove when operations are created
-        readContent += stopListeningCommandES + ", " + chooseDistributionCommandES + ", " + changeCommandES + ", "
-            + activateCommandES + ", " + deactivateCommandES + ", " + readFasterCommandES + ", " + readSlowerCommandES + ". ";
-        //readContent += "Las secciones para leer en voz alta son: " + readParamsES.toString() + ". Y las secciones para ir directamente son: " + goToParamsES.toString() + ".";
+        readContent += stopListeningCommandES + ", " + changeCommandES + ", " + activateCommandES + ", " + deactivateCommandES + ". ";
     }
 
     Read(readContent);
@@ -1403,8 +1488,6 @@ function KeyPress(e) {
         readSectionsText();
     }*/
     if(evtobj.keyCode == 32 && evtobj.ctrlKey && evtobj.shiftKey){
-        //TODO: quitar pruebas
-        /*readAloud("columnas");*/
         if(!reading){
             readWelcome();
         }
@@ -1505,7 +1588,7 @@ function audioToText(){
                 }
                 else if(speechToText.includes(welcomeCommand) || speechToText.includes(welcomeCommandES)){
                     readWelcome();
-                }*/
+                }
                 if(speechToText.includes(readFasterCommand) || speechToText.includes(readFasterCommandES)){
                     readFaster();
                 }
@@ -1518,7 +1601,7 @@ function audioToText(){
                 else if(speechToText.includes(downloadDistributionCommand) || speechToText.includes(downloadDistributionCommandES)){
                     downloadDistribution();
                 }
-                else if((speechToText.includes(activateCommand) && !speechToText.includes(deactivateCommand)) ||
+                else*/ if((speechToText.includes(activateCommand) && !speechToText.includes(deactivateCommand)) ||
                        (speechToText.includes(activateCommandES) && !speechToText.includes(deactivateCommandES))){
                     console.log("Activate operation: ");
                     for(var a = 0; a < operations.length; a++){
@@ -1758,14 +1841,7 @@ function updateGrammar(){
         commandsGrammar = [ 'increase', 'magnify', 'read', 'play', 'font', 'size', 'decrease', 'reduce', 'stop', 'listening', 'faster', 'slower' ];
         commandsAux = [];
         for(var i = 0; i < operations.length; i++){
-            //TODO: add operation + params names to grammar
-            /*if(operations[i].voiceCommand === "read" || operations[i].voiceCommand === "go to"){
-            for(var j = 0; j < sectionsNames.length; j++){
-                commandsAux.push(operations[i] + " " + sectionsNames[j].toLowerCase())
-            }
-        } else {*/
-            commandsAux.push(operations[i].voiceCommand)
-            //}
+            commandsAux.push(operations[i].voiceCommand);
         }
 
         for(var i2 = 0; i2 < readParams.length; i2++){
@@ -1775,14 +1851,7 @@ function updateGrammar(){
         commandsGrammar = [ 'aumentar', 'incrementar', 'leer', 'play', 'letra', 'tamaño', 'decrementar', 'reducir', 'detener', 'activar', 'desactivar', 'más', 'rápido', 'despacio' ];
         commandsAux = [];
         for(var j = 0; j < operations.length; j++){
-            //TODO: add operation + params names to grammar
-            /*if(operations[i].voiceCommand === "read" || operations[i].voiceCommand === "go to"){
-            for(var j = 0; j < sectionsNames.length; j++){
-                commandsAux.push(operations[i] + " " + sectionsNames[j].toLowerCase())
-            }
-        } else {*/
-            commandsAux.push(operations[j].voiceCommand)
-            //}
+            commandsAux.push(operations[j].voiceCommand);
         }
 
         for(var j2 = 0; j2 < readParams.length; j2++){
@@ -2900,13 +2969,20 @@ function chooseDistribution(number){
             }
         }
         //distributionChoosenURL = document.getElementsByClassName("distributions__item")[number-1].firstElementChild.lastElementChild.firstElementChild.lastElementChild.lastElementChild.lastElementChild.firstElementChild.firstElementChild.href;
+
+        if(!spanishDomain){
+            Read("Distribution " + number + " choosen. Now you can ask for data of that distribution.");
+        } else {
+            Read("Distribución " + number + " elegida. Ahora puedes preguntar por los datos de dicha distribución.");
+        }
+    } else {
+        if(!spanishDomain){
+            Read("Distribution not found.");
+        } else {
+            Read("Distribución no encontrada.");
+        }
     }
 
-    if(!spanishDomain){
-        Read("Distribution " + number + " choosen. Now you can ask for data of that distribution.");
-    } else {
-        Read("Distribución " + number + " elegida. Ahora puedes preguntar por los datos de dicha distribución.");
-    }
 
 }
 
@@ -2958,7 +3034,6 @@ function getColumnsText(){
 
 }
 
-//TODO: get rows functions
 function downloadDistributionToInteract(){
     var columns = "";
     var counter = 0;
@@ -2986,7 +3061,6 @@ function downloadDistributionToInteract(){
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         xhr.onreadystatechange = function() {
             //console.log(JSON.stringify(xhr));
-            //TODO return or read columns
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
                     //console.log(xhr.responseText);
@@ -3023,7 +3097,6 @@ function downloadDistributionToInteract(){
 }
 
 function readAloud(params){
-    //TODO: check if working
 
     console.log("read: " + params);
     //closeGoToMenu();
@@ -3031,7 +3104,7 @@ function readAloud(params){
     closeOperationsMenu();
 
     if(params == "" || params == null || typeof params == 'undefined'){
-    //TODO: if no params, read instructions (available params)
+    // if no params, read instructions (available params)
         if(!spanishDomain){
             Read("Please use the read command with one of the following options: columns, all, rows, row number, rows from number to number.");
         } else {
@@ -3128,7 +3201,12 @@ function readCell(){
 
 function readRows(){
     var readContent = "";
-    //TODO: activate shortcut to stop and read instructions
+
+    if(!spanishDomain){
+        readContent += "Reading data row by row, you can use the shortcut control and space to stop the reading aloud.";
+    } else {
+        readContent += "Leyendo datos fila a fila, puedes utilizar el atajo de teclado control más espacio para detener la lectura.";
+    }
 
     var columnText = "", cellValue = "";
     for(var i = 1; i < distributionData.length; i++){
@@ -3209,7 +3287,7 @@ function readRowsFrom(params){
     }
 
     var columnText = "", cellValue = "";
-    //TODO: read rows from n to m
+    // read rows from n to m
     if(positionStart >= 0 && positionEnd < distributionData.length){
         for(var i = 0; i < distributionData.length; i++){
             if(i >= positionStart && i <= positionEnd){
@@ -3270,6 +3348,25 @@ function downloadDistribution(){
         Read("Distribution downloading to your computer.");
     } else {
         Read("Distribución descargándose a su ordenador.");
+    }
+}
+
+// Main Page
+function goToMainPage(){
+    window.location.href = window.location.href.replace(window.location.pathname, "");
+}
+
+// Go back
+function goBack(){
+    var breadcrumbChildren = document.getElementById("BreadCrumb").children;
+    if(breadcrumbChildren.length > 1){
+        breadcrumbChildren[breadcrumbChildren.length-2].firstElementChild.click();
+    } else {
+        if(!spanishDomain){
+            Read("There is no previous page in the history from same web domain");
+        } else {
+            Read("No hay una página anterior en el historial que pertenezca al mismo dominio");
+        }
     }
 }
 
@@ -3354,9 +3451,3 @@ function createCSSSelector (selector, style) {
     styleSheet.insertRule(selector + '{' + style + '}', styleSheetLength);
   }
 }
-
-/*(function() {
-    'use strict';
-
-    // Your code here...
-})();*/
