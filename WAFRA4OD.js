@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WAFRA4OD
 // @namespace    http://tampermonkey.net/
-// @version      0.1.9
+// @version      0.2
 // @description  WAFRA for Open Data (WAFRA4OD)
 // @author       Cesar Gonzalez Mora
 // @match        *://www.europeandataportal.eu/*
@@ -170,6 +170,7 @@ function init (){
     document.body.addEventListener("mouseover", firstTimeReadWelcome);*/
 
     // Detect if domain is spanish or english
+    console.log(document.URL);
     if(document.URL.endsWith("/es") || document.URL.includes("locale=es")){
         spanishDomain = true;
         console.log("spanish domain");
@@ -192,13 +193,13 @@ function init (){
 
     /*********************** Add new operations here ************************/
     var welcome, search, addFilter, category, results, order, details, choose, removeFilter, readTitle, readDescription, readDistributions, readDetails,
-        readDataOperation, increaseFontSizeOperation, decreaseFontSizeOperation, faster, slower, chooseDistribution, download,
+        readDataOperation, increaseFontSizeOperation, decreaseFontSizeOperation,  faster, slower, chooseDistribution, download,
         mainPageOperation, goBackOperation, breadCrumbOperation;
     /*id; name; voiceCommand; activable; active; editable; hasMenu; mainPage; resultsPage; datasetPage;*/
     if(!spanishDomain){
         welcome = new WelcomeOperation("welcomeOperation", "Welcome", "welcome", true, true, true, false, true, true, true);
         search = new SearchOperation("searchOperation", "Search", "search", true, true, true, false, true, true, false);
-        addFilter = new AddFilterOperation("addFilterOperation", "Add filter", "add filter", true, true, true, true, false, true, false);
+        addFilter = new AddFilterOperation("addFilterOperation", "Add filter", "add filter", true, true, true, false, false, true, false);//TODO: create menu
         category = new CategoryOperation("categoryOperation", "Category", "category", true, true, true, true, true, true, false);
         results = new ResultsOperation("resultsOperation", "Results", "results", true, true, true, false, false, true, false);
         order = new OrderOperation("orderOperation", "Order", "order", true, true, true, true, false, true, false);
@@ -217,12 +218,13 @@ function init (){
         chooseDistribution = new ChooseDistributionOperation("chooseDistribution", "Choose distribution", "choose distribution", true, true, true, true, false, false, true);
         download = new DownloadOperation("download", "Download", "download", true, true, true, false, false, false, true);
         mainPageOperation = new GoMainPageOperation("mainPage", "Go to main page", "main page", true, true, true, false, false, true, true);
+
         goBackOperation = new GoBackOperation("goBack", "Go Back", "go back", true, true, true, false, false, true, true);
-        breadCrumbOperation = new BreadcrumbOperation("breadcrumb", "Breadcrumb", "", true, true, true, false);
+        breadCrumbOperation = new BreadcrumbOperation("breadcrumb", "Breadcrumb", "", true, true, true, false, true, true, true);
     } else {
         welcome = new WelcomeOperation("welcomeOperationES", "Bienvenida", "bienvenida", true, true, true, false, true, true, true);
         search = new SearchOperation("searchOperationES", "Buscar", "buscar", true, true, true, false, true, true, false);
-        addFilter = new AddFilterOperation("addFilterOperationES", "Añadir filtro", "añadir filtro", true, true, true, true, false, true, false);
+        addFilter = new AddFilterOperation("addFilterOperationES", "Añadir filtro", "añadir filtro", true, true, true, false, false, true, false);//TODO: create menu
         category = new CategoryOperation("categoryOperationES", "Categoría", "categoría", true, true, true, true, true, true, false);
         results = new ResultsOperation("resultsOperationES", "Resultados", "resultados", true, true, true, false, false, true, false);
         order = new OrderOperation("orderOperationES", "Ordenar", "ordenar", true, true, true, true, false, true, false);
@@ -441,8 +443,14 @@ class CategoryOperation extends Operation {
         this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
     }
 
-    configureOperation(){
+    configureOperation() {
+        createSubmenuForOperationCategory("menu-" + this.id.replaceAll('ES',''), this);
+    }
 
+    openMenu() {
+        closeOperationsMenu();
+        closeMenu("menu-" + this.id.replaceAll('ES',''));
+        showSubmenu("menu-" + this.id.replaceAll('ES',''));
     }
 
     startOperation(category) {
@@ -484,8 +492,14 @@ class OrderOperation extends Operation {
         this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
     }
 
-    configureOperation(){
+    configureOperation() {
+        createSubmenuForOperationOrder("menu-" + this.id.replaceAll('ES',''), this);
+    }
 
+    openMenu() {
+        closeOperationsMenu();
+        closeMenu("menu-" + this.id.replaceAll('ES',''));
+        showSubmenu("menu-" + this.id.replaceAll('ES',''));
     }
 
     startOperation(orderValue) {
@@ -508,8 +522,14 @@ class DetailsOperation extends Operation {
         this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
     }
 
-    configureOperation(){
+    configureOperation() {
+        createSubmenuForOperationDetailsAndChoose("menu-" + this.id.replaceAll('ES',''), this);
+    }
 
+    openMenu() {
+        closeOperationsMenu();
+        closeMenu("menu-" + this.id.replaceAll('ES',''));
+        showSubmenu("menu-" + this.id.replaceAll('ES',''));
     }
 
     startOperation(position) {
@@ -532,8 +552,14 @@ class ChooseOperation extends Operation {
         this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
     }
 
-    configureOperation(){
+    configureOperation() {
+        createSubmenuForOperationDetailsAndChoose("menu-" + this.id.replaceAll('ES',''), this);
+    }
 
+    openMenu() {
+        closeOperationsMenu();
+        closeMenu("menu-" + this.id.replaceAll('ES',''));
+        showSubmenu("menu-" + this.id.replaceAll('ES',''));
     }
 
     startOperation(position) {
@@ -556,8 +582,14 @@ class RemoveFilterOperation extends Operation {
         this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
     }
 
-    configureOperation(){
+    configureOperation() {
+        createSubmenuForOperationRemoveFilter("menu-" + this.id.replaceAll('ES',''), this);
+    }
 
+    openMenu() {
+        closeOperationsMenu();
+        closeMenu("menu-" + this.id.replaceAll('ES',''));
+        showSubmenu("menu-" + this.id.replaceAll('ES',''));
     }
 
     startOperation(filter) {
@@ -657,12 +689,13 @@ class ReadDataOperation extends Operation {
     }
 
     configureOperation() {
-        createSubmenuForOperationRead("menu-" + this.id, this);
+        createSubmenuForOperationRead("menu-" + this.id.replaceAll('ES',''), this);
     }
 
     openMenu() {
         closeOperationsMenu();
-        showSubmenu("menu-" + this.id);
+        closeMenu("menu-" + this.id.replaceAll('ES',''));
+        showSubmenu("menu-" + this.id.replaceAll('ES',''));
     }
 
     startOperation(params) {
@@ -752,15 +785,11 @@ class FasterOperation extends Operation {
         super();
         this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
     }
-
     configureOperation(){
-
     }
-
     startOperation() {
         readFaster();
     }
-
     stopOperation() {
         console.log("Stop operation");
     }
@@ -771,15 +800,11 @@ class SlowerOperation extends Operation {
         super();
         this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
     }
-
     configureOperation(){
-
     }
-
     startOperation() {
         readSlower();
     }
-
     stopOperation() {
         console.log("Stop operation");
     }
@@ -790,11 +815,8 @@ class ChooseDistributionOperation extends Operation {
         super();
         this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
     }
-
     configureOperation(){
-
     }
-
     startOperation(params) {
         if(typeof params !== 'undefined'){
             var parameters = params.currentTarget.params;
@@ -803,7 +825,6 @@ class ChooseDistributionOperation extends Operation {
             chooseDistribution("");
         }
     }
-
     stopOperation() {
         console.log("Stop operation");
     }
@@ -814,15 +835,11 @@ class DownloadOperation extends Operation {
         super();
         this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
     }
-
     configureOperation(){
-
     }
-
     startOperation() {
         downloadDistribution();
     }
-
     stopOperation() {
         console.log("Stop operation");
     }
@@ -833,18 +850,16 @@ class GoMainPageOperation extends Operation {
         super();
         this.initOperation(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage);
     }
-
     configureOperation() {
     }
-
     startOperation() {
         goToMainPage();
     }
-
     stopOperation() {
     }
 }
 
+// Go back
 class GoBackOperation extends Operation {
     constructor(id, name, voiceCommand, activable, active, editable, hasMenu, mainPage, resultsPage, datasetPage){
         super();
@@ -1099,9 +1114,9 @@ function createOperationsMenu(){
                                 document.getElementById(operations[operationsI].id).style.setProperty("pointer-events", "all");
                             }
 
-                            if(this.id.split("Input").join("") === "readAloud"){
+                            /*if(this.id.split("Input").join("") === "readAloud"){
                                 toggleReadAloud();
-                            } else if(this.id.split("Input").join("") === "breadcrumb"){
+                            } else */if(this.id.split("Input").join("") === "breadcrumb"){
                                 toggleBreadcrumb();
                             }
                         }
@@ -1120,7 +1135,7 @@ function createOperationsMenu(){
     setTimeout(function() { document.getElementById("welcomeOperation").click(); }, 1000);
 
 
-    toggleReadAloud();
+    //toggleReadAloud();
     toggleBreadcrumb();
 }
 
@@ -1239,11 +1254,218 @@ function createSubmenuForOperationRead(menuId, operationForSubmenu){
         a1.operation = operationForSubmenu;
         divSubMenu.appendChild(a1);
         divSubMenu.appendChild(document.createElement('br'));
+
+        var a2 = document.createElement('a');
+        if(!spanishDomain){
+            a2.text = "all";
+            a2.params = "all";
+        } else {
+            a2.text = "todo";
+            a2.params = "todo";
+        }
+        a2.href = 'javascript:;';
+        a2.addEventListener("click", operationForSubmenu.startOperation, false);
+        a2.operation = operationForSubmenu;
+        divSubMenu.appendChild(a2);
+        divSubMenu.appendChild(document.createElement('br'));
+
+        var a3 = document.createElement('a');
+        if(!spanishDomain){
+            a3.text = "rows";
+            a3.params = "rows";
+        } else {
+            a3.text = "filas";
+            a3.params = "filas";
+        }
+        a3.href = 'javascript:;';
+        a3.addEventListener("click", operationForSubmenu.startOperation, false);
+        a3.operation = operationForSubmenu;
+        divSubMenu.appendChild(a3);
+        divSubMenu.appendChild(document.createElement('br'));
     } catch(e){}
 
     document.getElementById("div-webaugmentation").appendChild(divSubMenu);
 }
 
+function createSubmenuForOperationCategory(menuId, operationForSubmenu){
+
+    var divSubMenu = document.createElement("div");
+    divSubMenu.id = menuId;
+    divSubMenu.style = "z-index: 100; padding: 10px; border: 2px solid black; display: none; background-color: white";
+
+    var i = document.createElement('i');
+    i.className = 'fa fa-close';
+    i.style = "position: absolute; right: 1%; top: 31%; z-index: 100;";
+    i.addEventListener("click", closeSubmenu, false);
+    i.menuId = menuId;
+    divSubMenu.appendChild(i);
+
+    try{
+        setTimeout(function(){
+            if(apiResultPortalMetadata !== null && apiResultPortalMetadata !== ""
+               && apiResultPortalMetadata.facets !== null && apiResultPortalMetadata.facets !== ""){
+                for(var j = 0; j < apiResultPortalMetadata.facets.length; j++){
+                    if(apiResultPortalMetadata.facets[j].id == "categories"){
+                        for(var k = 0; k < apiResultPortalMetadata.facets[j].items.length; k++){
+                            //check for language tag
+                            var a1 = document.createElement('a');
+                            if(apiResultPortalMetadata.facets[j].items[k].title.en && !spanishDomain){
+                                a1.text = apiResultPortalMetadata.facets[j].items[k].title.en;
+                                a1.params = apiResultPortalMetadata.facets[j].items[k].title.en;
+                            } else if(apiResultPortalMetadata.facets[j].items[k].title.es && spanishDomain){
+                                a1.text = apiResultPortalMetadata.facets[j].items[k].title.es;
+                                a1.params = apiResultPortalMetadata.facets[j].items[k].title.es;
+                            } else {
+                                a1.text = apiResultPortalMetadata.facets[j].items[k].title;
+                                a1.params = apiResultPortalMetadata.facets[j].items[k].title;
+                            }
+                            a1.href = 'javascript:;';
+                            a1.addEventListener("click", operationForSubmenu.startOperation, false);
+                            a1.operation = operationForSubmenu;
+                            divSubMenu.appendChild(a1);
+                            divSubMenu.appendChild(document.createElement('br'));
+                        }
+                    }
+                }
+            }
+        }, 3000);
+    } catch(e){}
+
+    document.getElementById("div-webaugmentation").appendChild(divSubMenu);
+}
+
+function createSubmenuForOperationDetailsAndChoose(menuId, operationForSubmenu){
+
+    var divSubMenu = document.createElement("div");
+    divSubMenu.id = menuId;
+    divSubMenu.style = "z-index: 100; padding: 10px; border: 2px solid black; display: none; background-color: white";
+
+    var i = document.createElement('i');
+    i.className = 'fa fa-close';
+    i.style = "position: absolute; right: 1%; top: 31%; z-index: 100;";
+    i.addEventListener("click", closeSubmenu, false);
+    i.menuId = menuId;
+    divSubMenu.appendChild(i);
+
+    try{
+        for(var j = 1; j <= 10; j++){
+            var a1 = document.createElement('a');
+            a1.text = "Dataset " + j;
+            a1.params = j;
+            a1.href = 'javascript:;';
+            a1.addEventListener("click", operationForSubmenu.startOperation, false);
+            a1.operation = operationForSubmenu;
+            divSubMenu.appendChild(a1);
+            divSubMenu.appendChild(document.createElement('br'));
+        }
+    } catch(e){}
+
+    document.getElementById("div-webaugmentation").appendChild(divSubMenu);
+}
+
+function createSubmenuForOperationOrder(menuId, operationForSubmenu){
+
+    var divSubMenu = document.createElement("div");
+    divSubMenu.id = menuId;
+    divSubMenu.style = "z-index: 100; padding: 10px; border: 2px solid black; display: none; background-color: white";
+
+    var i = document.createElement('i');
+    i.className = 'fa fa-close';
+    i.style = "position: absolute; right: 1%; top: 31%; z-index: 100;";
+    i.addEventListener("click", closeSubmenu, false);
+    i.menuId = menuId;
+    divSubMenu.appendChild(i);
+
+    try{
+        var a1 = document.createElement('a');
+        if(!spanishDomain){
+            a1.text = "Relevance";
+        } else {
+            a1.text = "Relevancia";
+        }
+        a1.params = "relevance";
+        a1.href = 'javascript:;';
+        a1.addEventListener("click", operationForSubmenu.startOperation, false);
+        a1.operation = operationForSubmenu;
+        divSubMenu.appendChild(a1);
+        divSubMenu.appendChild(document.createElement('br'));
+    } catch(e){}
+
+    document.getElementById("div-webaugmentation").appendChild(divSubMenu);
+}
+
+
+
+function createSubmenuForOperationRemoveFilter(menuId, operationForSubmenu){
+
+    var divSubMenu = document.createElement("div");
+    divSubMenu.id = menuId;
+    divSubMenu.style = "z-index: 100; padding: 10px; border: 2px solid black; display: none; background-color: white";
+
+    var i = document.createElement('i');
+    i.className = 'fa fa-close';
+    i.style = "position: absolute; right: 1%; top: 31%; z-index: 100;";
+    i.addEventListener("click", closeSubmenu, false);
+    i.menuId = menuId;
+    divSubMenu.appendChild(i);
+
+    try{
+        var params = window.location.search;
+        var urlParams = new URLSearchParams(params);
+        // read aloud available filters
+        var querySearch = urlParams.get('query');
+        if(querySearch != null){
+            var a1 = document.createElement('a');
+            if(!spanishDomain){
+                a1.text = "Search";
+            } else {
+                a1.text = "Búsqueda";
+            }
+            a1.params = "search";
+            a1.href = 'javascript:;';
+            a1.addEventListener("click", operationForSubmenu.startOperation, false);
+            a1.operation = operationForSubmenu;
+            divSubMenu.appendChild(a1);
+            divSubMenu.appendChild(document.createElement('br'));
+        }
+
+        var sort = urlParams.get('sort');
+        if(sort != null){
+            var a2 = document.createElement('a');
+            if(!spanishDomain){
+                a2.text = "Sort";
+            } else {
+                a2.text = "Orden";
+            }
+            a2.params = "sort";
+            a2.href = 'javascript:;';
+            a2.addEventListener("click", operationForSubmenu.startOperation, false);
+            a2.operation = operationForSubmenu;
+            divSubMenu.appendChild(a2);
+            divSubMenu.appendChild(document.createElement('br'));
+        }
+
+        setTimeout(function(){
+            if(apiResultPortalMetadata !== null && apiResultPortalMetadata !== ""
+               && apiResultPortalMetadata.facets !== null && apiResultPortalMetadata.facets !== ""){
+                for(var j = 0; j < apiResultPortalMetadata.facets.length; j++){
+                    if(urlParams.getAll(apiResultPortalMetadata.facets[j].id).length > 0){
+                        var aj = document.createElement('a');
+                        aj.text = apiResultPortalMetadata.facets[j].id;
+                        aj.params = apiResultPortalMetadata.facets[j].id;
+                        aj.href = 'javascript:;';
+                        aj.addEventListener("click", operationForSubmenu.startOperation, false);
+                        aj.operation = operationForSubmenu;
+                        divSubMenu.appendChild(aj);
+                        divSubMenu.appendChild(document.createElement('br'));
+                    }
+                }
+            }
+        }, 3000);
+    } catch(e){}
+
+    document.getElementById("div-webaugmentation").appendChild(divSubMenu);
+}
 
 function createSubmenuForOperationGoTo(menuId, operationForSubmenu){
 
@@ -1347,7 +1569,7 @@ function createPlayButtons(){
     });
 }
 
-function toggleReadAloud(){
+/*function toggleReadAloud(){
     var divsToHide = document.getElementsByClassName("readAloudButton");
     var readCommandActive;
     if(!document.getElementById("readAloudInput").checked){
@@ -1364,7 +1586,7 @@ function toggleReadAloud(){
         }
     }
     myStorage.setItem("readAloudActive", readCommandActive);
-}
+}*/
 
 function resumeInfinity() {
     reading = true;
@@ -1382,7 +1604,7 @@ function Read(message){
     if(!document[hidden]){
 
         var reader = new SpeechSynthesisUtterance(message);
-        reader.rate = readerRate;
+        reader.rate = parseFloat(readerRate);
         if(!spanishDomain){
             reader.lang = languageCodeSyntesis;
         } else {
@@ -1425,6 +1647,7 @@ function Read(message){
 function readFaster(){
     //console.log(readerRate);
     //readerRate = parseFloat(readerRate);
+    readerRate = parseFloat(readerRate);
     if(readerRate <= 9){
         readerRate = readerRate + 0.5;
         myStorage.setItem("readerRate", readerRate);
@@ -1481,12 +1704,6 @@ function stopReading(){
 // Shortcuts
 function KeyPress(e) {
     var evtobj = window.event? event : e
-
-    // No mic tests
-    /*if(evtobj.ctrlKey && evtobj.shiftKey){
-        console.log("No mic tests");
-        readSectionsText();
-    }*/
     if(evtobj.keyCode == 32 && evtobj.ctrlKey && evtobj.shiftKey){
         if(!reading){
             readWelcome();
@@ -1533,6 +1750,9 @@ function KeyPress(e) {
             } else {
                 Read("Comandos por voz desactivados, para activarlos use el comando " + stopListeningCommand + ".");
             }
+        }
+        if(!reading && navigationShortcutsActive){
+            navigationShortcutsActive = false;
         }
 
         myStorage.setItem("recognitionActive", recognitionActive);
@@ -1583,25 +1803,7 @@ function audioToText(){
             commandListened = speechToText;
             console.log(speechToText);
             if(!changeCommandInProcess1 && !changeCommandInProcess2){
-                /*if(speechToText.includes(listOperationsCommand) || speechToText.includes(listOperationsCommandES)){
-                    readOperations();
-                }
-                else if(speechToText.includes(welcomeCommand) || speechToText.includes(welcomeCommandES)){
-                    readWelcome();
-                }
-                if(speechToText.includes(readFasterCommand) || speechToText.includes(readFasterCommandES)){
-                    readFaster();
-                }
-                else if(speechToText.includes(readSlowerCommand) || speechToText.includes(readSlowerCommandES)){
-                    readSlower();
-                }
-                else if(speechToText.includes(chooseDistributionCommand) || speechToText.includes(chooseDistributionCommandES)){
-                    chooseDistribution(speechToText.replaceAll(chooseDistributionCommand, "").replaceAll(chooseDistributionCommandES, "").trim());
-                }
-                else if(speechToText.includes(downloadDistributionCommand) || speechToText.includes(downloadDistributionCommandES)){
-                    downloadDistribution();
-                }
-                else*/ if((speechToText.includes(activateCommand) && !speechToText.includes(deactivateCommand)) ||
+                if((speechToText.includes(activateCommand) && !speechToText.includes(deactivateCommand)) ||
                        (speechToText.includes(activateCommandES) && !speechToText.includes(deactivateCommandES))){
                     console.log("Activate operation: ");
                     for(var a = 0; a < operations.length; a++){
@@ -1846,6 +2048,7 @@ function updateGrammar(){
 
         for(var i2 = 0; i2 < readParams.length; i2++){
             commandsAux.push(readParams[i2]);
+            commandsAux.push("read " + readParams[i2]);
         }
     } else {
         commandsGrammar = [ 'aumentar', 'incrementar', 'leer', 'play', 'letra', 'tamaño', 'decrementar', 'reducir', 'detener', 'activar', 'desactivar', 'más', 'rápido', 'despacio' ];
@@ -1856,6 +2059,7 @@ function updateGrammar(){
 
         for(var j2 = 0; j2 < readParams.length; j2++){
             commandsAux.push(readParams[j2]);
+            commandsAux.push("leer " + readParams[j2]);
         }
     }
 
@@ -1970,20 +2174,32 @@ function toggleBreadcrumb(){
     myStorage.setItem("breadcrumbActive", breadcrumbCommandActive);
 }
 
-function toggleMenu(){
-    var x = document.getElementById("foldingMenu");
+function toggleMenu(id){
+    var x;
+    if(id !== null && typeof id !== 'undefined' && typeof id == "string"){
+        x = document.getElementById(id);
+    } else {
+        x = document.getElementById("foldingMenu");
+        if(x !== null){
+            closeCommandsMenu();
+            closeOperationsMenu();
+        }
+    }
     if(x !== null){
         if (x.style.display === "block") {
             x.style.display = "none";
         } else {
             x.style.display = "block";
         }
-        closeCommandsMenu();
-        closeOperationsMenu();
     }
 }
-function closeMenu(){
-    var x = document.getElementById("foldingMenu");
+function closeMenu(id){
+    var x;
+    if(id !== null && typeof id !== 'undefined' && typeof id == "string"){
+        x = document.getElementById(id);
+    } else {
+        x = document.getElementById("foldingMenu");
+    }
     if(x !== null){
         x.style.display = "none";
     }
@@ -2508,10 +2724,10 @@ function orderResults(orderValue){
             }
         } else {
             if(!spanishDomain){
-                Read("The available ordering options are: " + readContent + ". You can use the same voice command indicating the category name.");
+                Read("The available ordering options are: " + readContent + ". You can use the same voice command indicating the ordering value.");
             }
             else{
-                Read("Las opciones de ordenación disponibles son: " + readContent + ". Puedes utilizar el mismo comando de voz indicando el nombre de la categoría.");
+                Read("Las opciones de ordenación disponibles son: " + readContent + ". Puedes utilizar el mismo comando de voz indicando el valor de ordenación.");
             }
         }
     } else {
@@ -2546,10 +2762,16 @@ function details(positionText){
         }
     } else {
         // read details of position dataset
-        var position = text2num(positionText);
+        var positionAux = text2num(positionText);
+        var position;
+        if(parseInt(positionAux) > 0){
+            position = parseInt(positionAux) - 1;
+        } else {
+            position = 0;
+        }
         if(apiResultPortalResults !== null && apiResultPortalResults !== ""
            && apiResultPortalResults.results !== null && apiResultPortalResults.results !== ""){
-            if(apiResultPortalResults.results.length > parseInt(position)){
+            if(apiResultPortalResults.results.length > position){
                 // read and description title in language (if existing) and description (if possible).
                 var titleAux = "", descriptionAux = "", publisher = "", country = "";
 
@@ -2637,7 +2859,13 @@ function choose(positionText){
         }
     } else {
         // access dataset
-        var position = text2num(positionText);
+        var positionAux = text2num(positionText);
+        var position;
+        if(parseInt(positionAux) > 0){
+            position = parseInt(positionAux) - 1;
+        } else {
+            position = 0;
+        }
         var datasetFound = false;
         if(apiResultPortalResults !== null && apiResultPortalResults !== ""
            && apiResultPortalResults.results !== null && apiResultPortalResults.results !== ""){
@@ -2952,6 +3180,7 @@ function getDetailsText(){
 }
 
 function chooseDistribution(number){
+    //TODO: check if number is integer and if we are in datasets page
     console.log("chooseDistribution: " + number);
 
     if(number !== "" && number >= 1){
@@ -2982,7 +3211,6 @@ function chooseDistribution(number){
             Read("Distribución no encontrada.");
         }
     }
-
 
 }
 
@@ -3141,9 +3369,9 @@ function readAloud(params){
                 break;
             default:
                 if(!spanishDomain){
-                    Read("Read " + params + "is not possible, please try again with another option. To get available options use the command Read.");
+                    Read("Read " + params + " is not possible, please try again with another option. To get available options use the command Read.");
                 } else {
-                    Read("No es posible leer " + params + "por favor prueba con otra opción. Para saber las opciones disponibles usa el comando Leer.");
+                    Read("No es posible leer " + params + " por favor prueba con otra opción. Para saber las opciones disponibles usa el comando Leer.");
                 }
                 break;
         }
@@ -3179,9 +3407,9 @@ function readCell(){
     var rowPosAux = rowPos;
     if(!limitColumn && !limitRow){
         if(!spanishDomain){
-            Read(" Row " + rowPosAux + " Column " + columnPosAux + ": " + columnText + ", " + cellValue + ".");
+            Read(" Row " + rowPosAux + " Column " + columnPosAux + ": the value of " + columnText + " is " + cellValue + ".");
         } else {
-            Read(" Fila " + rowPosAux + " Columna " + columnPosAux + ": " + columnText + ", " + cellValue + ".");
+            Read(" Fila " + rowPosAux + " Columna " + columnPosAux + ": el valor de " + columnText + " es " + cellValue + ".");
         }
     } else if(limitColumn){
         if(!spanishDomain){
@@ -3189,19 +3417,20 @@ function readCell(){
         } else {
             Read("Se ha alcanzado el borde en la columna " + columnPosAux + ".");
         }
+            console.log("row " + rowPosAux);
     } else if(limitRow){
         if(!spanishDomain){
             Read("The edge has been reached in row " + rowPosAux + ".");
         } else {
             Read("Se ha alcanzado el borde en la fila " + rowPosAux + ".");
         }
+            console.log("column " + columnPosAux);
     }
     //TODO: check border in row 100 and download 100 more rows
 }
 
 function readRows(){
     var readContent = "";
-
     if(!spanishDomain){
         readContent += "Reading data row by row, you can use the shortcut control and space to stop the reading aloud.";
     } else {
@@ -3217,9 +3446,9 @@ function readRows(){
             cellValue = distributionData[i][j];
             //Move rowPos and columnPos?
             if(!spanishDomain){
-                readContent += " Row " + rowPosAux + " Column " + columnPosAux + ": " + columnText + ", " + cellValue + ".";
+                readContent += " Row " + rowPosAux + " Column " + columnPosAux + ": the value of " + columnText + " is " + cellValue + ".";
             } else {
-                readContent += " Fila " + rowPosAux + " Columna " + columnPosAux + ": " + columnText + ", " + cellValue + ".";
+                readContent += " Fila " + rowPosAux + " Columna " + columnPosAux + ": el valor de " + columnText + " es " + cellValue + ".";
             }
         }
     }
@@ -3239,6 +3468,8 @@ function readRow(params){
         } else {
             error = true;
         }
+    } else {
+        error = true;
     }
     console.log(position);
 
@@ -3251,9 +3482,9 @@ function readRow(params){
             cellValue = distributionData[position][j];
             //Move rowPos and columnPos?
             if(!spanishDomain){
-                readContent += " Row " + rowPosAux + " Column " + columnPosAux + ": " + columnText + ", " + cellValue + ".";
+                readContent += " Row " + rowPosAux + " Column " + columnPosAux + ": the value of " + columnText + " is " + cellValue + ".";
             } else {
-                readContent += " Fila " + rowPosAux + " Columna " + columnPosAux + ": " + columnText + ", " + cellValue + ".";
+                readContent += " Fila " + rowPosAux + " Columna " + columnPosAux + ": el valor de " + columnText + " es " + cellValue + ".";
             }
         }
     } else {
@@ -3298,9 +3529,9 @@ function readRowsFrom(params){
                     cellValue = distributionData[i][j];
                     //Move rowPos and columnPos?
                     if(!spanishDomain){
-                         readContent += " Row " + rowPosAux + " Column " + columnPosAux + ": " + columnText + ", " + cellValue + ".";
+                         readContent += " Row " + rowPosAux + " Column " + columnPosAux + ": the value of " + columnText + " is " + cellValue + ".";
                     } else {
-                        readContent += " Fila " + rowPosAux + " Columna " + columnPosAux + ": " + columnText + ", " + cellValue + ".";
+                        readContent += " Fila " + rowPosAux + " Columna " + columnPosAux + ": el valor de " + columnText + " es " + cellValue + ".";
                     }
                 }
             }
@@ -3323,13 +3554,25 @@ function readRowsFrom(params){
 
 function activateKeyboardShortcuts(){
     columnPos = 0;
-    rowPos = 0;
+    rowPos = 1;
     navigationShortcutsActive = true;
     if(!spanishDomain){
-        Read("Now you can use control + keyboard arrows to navigate within the data. For example, use control and down arrow to read the cell below, or use control and right arrow to read the next cell in the row.");
+        Read("Now you can use control + keyboard arrows to navigate within the data. For example, use control and down arrow to read the cell below, or use control and right arrow to read the next cell in the row. To stop this operation and reactivate other voice commands use the shortcut control + space.");
     } else {
-        Read("Ahora puedes utilizar el atajo control más las flechas para navegar entre los datos. Por ejemplo, usa control y flecha abajo para leer la celda inferior, o usa control y flecha derecha para leer la celda siguiente en la fila.");
+        Read("Ahora puedes utilizar el atajo control más las flechas para navegar entre los datos. Por ejemplo, usa control y flecha abajo para leer la celda inferior, o usa control y flecha derecha para leer la celda siguiente en la fila. Para terminar esta operación y reactivar el resto de comandos por voz utiliza el atajo control y espacio.");
     }
+    recognitionActive = false;
+    recognition.abort();
+    var aToggleListening2 = document.getElementById("toggleListeningA");
+    if(!spanishDomain){
+        aToggleListening2.text = 'Start Listening';
+    } else {
+        aToggleListening2.text = 'Activar comandos por voz';
+    }
+    //var inputVoiceCommands2 = document.getElementById("voiceCommandsInput");
+    //inputVoiceCommands2.checked = recognitionActive;
+    var toggleListeningIcon2 = document.getElementById("toggleListeningIcon");
+    toggleListeningIcon2.style = "color:red; margin-left: 8px";
 }
 
 function downloadDistribution(){
