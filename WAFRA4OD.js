@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WAFRA4OD
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  WAFRA for Open Data (WAFRA4OD)
 // @author       Cesar Gonzalez Mora
 // @match        *://www.europeandataportal.eu/*
@@ -3265,8 +3265,9 @@ function getColumnsText(){
 function downloadDistributionToInteract(){
     var columns = "";
     var counter = 0;
-    //TODO: create own https server that redirects to dataset
-    Papa.parse("https://cors-anywhere.herokuapp.com/" + distributionChoosenURL, {
+    // created own https server that redirects to dataset
+    // Alternative: https://cors-anywhere.herokuapp.com/
+    Papa.parse("https://cors-wafra4od.herokuapp.com/" + distributionChoosenURL, {
         //worker: true,
         download: true,
         step: function(row, parser) {
