@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         WAFRA4OD
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.4
 // @description  WAFRA for Open Data (WAFRA4OD)
 // @author       Cesar Gonzalez Mora
 // @match        *://www.europeandataportal.eu/*
+// @match        *://data.europa.eu/*
 // @noframes
 // @exclude      *://www.youtube.com/embed/*
 // @grant        none
@@ -177,17 +178,17 @@ function init (){
     }
 
     //TODO: open data portals compatibility
-    if(document.URL.startsWith("https://www.europeandataportal.eu/data/datasets/")){
+    if(document.URL.startsWith("https://www.europeandataportal.eu/data/datasets/") || document.URL.startsWith("https://data.europa.eu/data/datasets/")){
         datasetPage = true;
-        var apiURLdataset = document.URL.replace("https://www.europeandataportal.eu/data/datasets/", "https://www.europeandataportal.eu/data/search/datasets/");
+        var apiURLdataset = document.URL.replace("https://"+ document.domain + "/data/datasets/", "https://"+ document.domain + "/api/hub/search/datasets/");
         queryAPIdataset(apiURLdataset);
-    } else if(document.URL.startsWith("https://www.europeandataportal.eu/data/datasets")){
+    } else if(document.URL.startsWith("https://www.europeandataportal.eu/data/datasets") || document.URL.startsWith("https://data.europa.eu/data/datasets")){
         resultsPage = true;
-        var apiURLresultsPage = "https://www.europeandataportal.eu/data/search/search";
+        var apiURLresultsPage = "https://"+ document.domain + "/api/hub/search/search";
         queryAPIportalMetadataWithResults(apiURLresultsPage);
-    } else if(document.URL.startsWith("https://www.europeandataportal.eu")){
+    } else if(document.URL.startsWith("https://www.europeandataportal.eu") || document.URL.startsWith("https://data.europa.eu")){
         mainPage = true;
-        var apiURLmainPage = "https://www.europeandataportal.eu/data/search/search";
+        var apiURLmainPage = "https://"+ document.domain + "/api/hub/search/search";
         queryAPIportalMetadata(apiURLmainPage);
     }
 
@@ -1132,7 +1133,7 @@ function createOperationsMenu(){
     /*  createReadMenu();
         createGoToMenu();*/
     //readWelcome();
-    setTimeout(function() { document.getElementById("welcomeOperation").click(); }, 1000);
+    setTimeout(function() { try{document.getElementById("welcomeOperation").click();} catch(e){} }, 1000);
 
 
     //toggleReadAloud();
@@ -2163,15 +2164,18 @@ function breadcrumb(){
 
 
 function toggleBreadcrumb(){
-    var breadcrumbCommandActive;
-    if(document.getElementById("breadcrumbInput").checked){
-        breadcrumbCommandActive = true;
-        document.getElementById("BreadCrumb").style.setProperty("display", "block");
-    } else {
-        breadcrumbCommandActive = false;
-        document.getElementById("BreadCrumb").style.setProperty("display", "none");
+    try{
+        var breadcrumbCommandActive;
+        if(document.getElementById("breadcrumbInput").checked){
+            breadcrumbCommandActive = true;
+            document.getElementById("BreadCrumb").style.setProperty("display", "block");
+        } else {
+            breadcrumbCommandActive = false;
+            document.getElementById("BreadCrumb").style.setProperty("display", "none");
+        }
+        myStorage.setItem("breadcrumbActive", breadcrumbCommandActive);
+    } catch(e){
     }
-    myStorage.setItem("breadcrumbActive", breadcrumbCommandActive);
 }
 
 function toggleMenu(id){
@@ -2345,7 +2349,7 @@ function queryAPIportalMetadataWithResults(apiURL){
 
                 var sort = urlParams.get('sort');
                 if(sort == null){
-                    sort = "modification_date+desc";
+                    sort = "relevance+desc";
                 }
 
                 var facetsObj = {};
@@ -2661,7 +2665,7 @@ function results(){
             }
 
             if(titleAux != "" && typeof titleAux != 'undefined'){
-                readContent += indexAux + ": " + titleAux + ", ";
+                readContent += indexAux + ": " + titleAux + ". ";
                 indexAux++;
             }
         }
