@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WAFRA4OD
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      0.5
 // @description  WAFRA for Open Data (WAFRA4OD)
 // @author       Cesar Gonzalez Mora
 // @match        *://www.europeandataportal.eu/*
@@ -178,7 +178,8 @@ function init (){
     }
 
     //TODO: open data portals compatibility
-    if(document.URL.startsWith("https://www.europeandataportal.eu/data/datasets/") || document.URL.startsWith("https://data.europa.eu/data/datasets/")){
+    if((document.URL.startsWith("https://www.europeandataportal.eu/data/datasets/") || document.URL.startsWith("https://data.europa.eu/data/datasets/"))
+      && (!document.URL.startsWith("https://www.europeandataportal.eu/data/datasets/?") && !document.URL.startsWith("https://data.europa.eu/data/datasets/?"))){
         datasetPage = true;
         var apiURLdataset = document.URL.replace("https://"+ document.domain + "/data/datasets/", "https://"+ document.domain + "/api/hub/search/datasets/");
         queryAPIdataset(apiURLdataset);
@@ -2396,7 +2397,11 @@ function search(term){
         Read("Realizando la búsqueda y redirigiendo a la página de resultados.");
     }
     setTimeout(function(){
-        window.location.href = '/data/datasets?query=' + term;
+        if(!spanishDomain){
+            window.location.href = '/data/datasets?query=' + term + '&locale=en';
+        } else {
+            window.location.href = '/data/datasets?query=' + term + '&locale=es';
+        }
     }, 3000);
 }
 
@@ -2882,7 +2887,13 @@ function choose(positionText){
                     Read("Accediendo al conjunto de datos y redirigiendo su página.");
                 }
                 setTimeout(function(){
-                    window.location.href = '/data/datasets/' + apiResultPortalResults.results[position].id;
+                    var href = '';
+                    if(!spanishDomain){
+                        href = '/data/datasets/' + apiResultPortalResults.results[position].id + '?locale=en';
+                    } else {
+                        href = '/data/datasets/' + apiResultPortalResults.results[position].id + '?locale=es';
+                    }
+                    window.location.href = href;
                 }, 3000);
             }
         }
